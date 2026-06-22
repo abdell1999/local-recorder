@@ -74,6 +74,18 @@ describe('useTranscription', () => {
     expect(errorMessage.value).toBe('worker-crashed')
   })
 
+  it('resets download progress when the worker crashes mid-download', () => {
+    const worker = createFakeWorker()
+    const { downloadProgress, transcribe } = useTranscription(() => worker)
+    transcribe(new Float32Array([0.1]), 'small')
+    worker.onmessage?.({ data: { type: 'model-download-progress', percent: 55 } } as MessageEvent)
+    expect(downloadProgress.value).toBe(55)
+
+    worker.onerror?.(new Event('error') as ErrorEvent)
+
+    expect(downloadProgress.value).toBeNull()
+  })
+
   it('retry terminates the old worker and creates a new one', () => {
     const firstWorker = createFakeWorker()
     const secondWorker = createFakeWorker()

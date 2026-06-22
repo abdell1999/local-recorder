@@ -52,6 +52,7 @@ export function useTranscription(createWorker: () => MinimalWorker = createDefau
     worker.onerror = () => {
       state.value = 'error'
       errorMessage.value = 'worker-crashed'
+      downloadProgress.value = null
     }
     return worker
   }
