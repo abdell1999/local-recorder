@@ -1,0 +1,31 @@
+{
+  "name": "local-recorder",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "nuxt dev",
+    "build": "nuxt build",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@huggingface/transformers": "^3.7.4",
+    "@nuxtjs/tailwindcss": "^6.14.0",
+    "@vite-pwa/nuxt": "^1.0.4",
+    "nuxt": "^4.0.0",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.50.0",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "@vue/test-utils": "^2.4.6",
+    "happy-dom": "^16.5.3",
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.8"
+  }
+}
