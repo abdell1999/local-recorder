@@ -24,8 +24,10 @@ vi.mock('../../../app/composables/useRecorder', () => ({
 vi.mock('../../../app/composables/useFileImport', () => ({
   useFileImport: () => ({ state: ref('idle'), errorMessage: importError, importFile }),
 }))
+const setModelSize = vi.fn()
+
 vi.mock('../../../app/composables/useModelSelector', () => ({
-  useModelSelector: () => ({ modelSize, setModelSize: vi.fn() }),
+  useModelSelector: () => ({ modelSize, setModelSize }),
 }))
 vi.mock('../../../app/composables/useTranscription', () => ({
   useTranscription: () => ({
@@ -44,11 +46,18 @@ vi.mock('../../../app/utils/audio/decodeAudioFile', () => ({
 
 import IndexPage from '../../../app/pages/index.vue'
 import FileDropzone from '../../../app/components/importer/FileDropzone.vue'
+import ModelSizePicker from '../../../app/components/settings/ModelSizePicker.vue'
 
 function mountPage() {
   return mount(IndexPage, {
     global: {
-      stubs: { RecordButton: true, RecordingTimer: true, TranscriptEditor: true, ExportMenu: true },
+      stubs: {
+        RecordButton: true,
+        RecordingTimer: true,
+        TranscriptEditor: true,
+        ExportMenu: true,
+        ModelSizePicker: true,
+      },
     },
   })
 }
@@ -117,5 +126,28 @@ describe('index page', () => {
     await wrapper.vm.$nextTick()
 
     expect(wrapper.find('[data-testid="wasm-fallback-notice"]').exists()).toBe(true)
+  })
+
+  it('disables the model size picker while a transcription is loading or running', async () => {
+    const wrapper = mountPage()
+    expect(wrapper.findComponent(ModelSizePicker).props('disabled')).toBe(false)
+
+    transcriptionState.value = 'loading-model'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.findComponent(ModelSizePicker).props('disabled')).toBe(true)
+
+    transcriptionState.value = 'transcribing'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.findComponent(ModelSizePicker).props('disabled')).toBe(true)
+
+    transcriptionState.value = 'done'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.findComponent(ModelSizePicker).props('disabled')).toBe(false)
+  })
+
+  it('calls setModelSize when the model size picker emits a new value', async () => {
+    const wrapper = mountPage()
+    await wrapper.findComponent(ModelSizePicker).vm.$emit('update:modelValue', 'medium')
+    expect(setModelSize).toHaveBeenCalledWith('medium')
   })
 })

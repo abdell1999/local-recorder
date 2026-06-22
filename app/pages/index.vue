@@ -5,6 +5,7 @@ import RecordingTimer from '../components/recorder/RecordingTimer.vue'
 import FileDropzone from '../components/importer/FileDropzone.vue'
 import TranscriptEditor from '../components/transcript/TranscriptEditor.vue'
 import ExportMenu from '../components/export/ExportMenu.vue'
+import ModelSizePicker from '../components/settings/ModelSizePicker.vue'
 import { useRecorder } from '../composables/useRecorder'
 import { useFileImport } from '../composables/useFileImport'
 import { useModelSelector } from '../composables/useModelSelector'
@@ -20,7 +21,7 @@ const {
 
 const { errorMessage: importError, importFile } = useFileImport()
 
-const { modelSize } = useModelSelector()
+const { modelSize, setModelSize } = useModelSelector()
 
 const {
   state: transcriptionState,
@@ -81,6 +82,15 @@ function handleRetry() {
 <template>
   <main class="max-w-2xl mx-auto p-6 space-y-6">
     <h1 class="text-2xl font-bold">Local Recorder</h1>
+
+    <div class="flex items-center gap-2">
+      <span class="text-sm text-gray-600">Modelo:</span>
+      <ModelSizePicker
+        :model-value="modelSize"
+        :disabled="transcriptionState === 'loading-model' || transcriptionState === 'transcribing'"
+        @update:model-value="setModelSize"
+      />
+    </div>
 
     <section class="flex items-center gap-4">
       <RecordButton :state="recorderState" @start="handleRecordStart" @stop="handleRecordStop" />
