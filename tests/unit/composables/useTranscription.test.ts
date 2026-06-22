@@ -19,11 +19,27 @@ describe('useTranscription', () => {
     transcribe(new Float32Array([0.1]), 'small')
 
     expect(state.value).toBe('loading-model')
-    expect(worker.postMessage).toHaveBeenCalledWith({
-      type: 'transcribe',
-      audio: expect.any(Float32Array),
-      modelSize: 'small',
-    })
+    expect(worker.postMessage).toHaveBeenCalledWith(
+      { type: 'transcribe', audio: expect.any(Float32Array), modelSize: 'small' },
+      expect.any(Array),
+    )
+  })
+
+  it('clones the audio buffer before posting so the original stays usable for a future retry', () => {
+    const worker = createFakeWorker()
+    const { transcribe } = useTranscription(() => worker)
+    const original = new Float32Array([0.1, 0.2, 0.3])
+
+    transcribe(original, 'small')
+
+    expect(worker.postMessage).toHaveBeenCalledTimes(1)
+    const [message, transferList] = (worker.postMessage as ReturnType<typeof vi.fn>).mock.calls[0] as [
+      { audio: Float32Array },
+      Transferable[],
+    ]
+    expect(message.audio).not.toBe(original)
+    expect(Array.from(message.audio)).toEqual(Array.from(original))
+    expect(transferList).toEqual([message.audio.buffer])
   })
 
   it('reflects progress and result messages from the worker', () => {

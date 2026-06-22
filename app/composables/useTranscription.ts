@@ -5,7 +5,7 @@ import type { WhisperWorkerResponse, WhisperChunk } from '../workers/whisper.typ
 export type TranscriptionState = 'idle' | 'loading-model' | 'transcribing' | 'done' | 'error'
 
 export interface MinimalWorker {
-  postMessage: (message: unknown) => void
+  postMessage: (message: unknown, transfer?: Transferable[]) => void
   onmessage: ((event: MessageEvent<WhisperWorkerResponse>) => void) | null
   onerror: ((event: ErrorEvent) => void) | null
   terminate: () => void
@@ -60,7 +60,8 @@ export function useTranscription(createWorker: () => MinimalWorker = createDefau
   function transcribe(audio: Float32Array, modelSize: WhisperModelSize) {
     errorMessage.value = null
     state.value = 'loading-model'
-    ensureWorker().postMessage({ type: 'transcribe', audio, modelSize })
+    const transferable = audio.slice()
+    ensureWorker().postMessage({ type: 'transcribe', audio: transferable, modelSize }, [transferable.buffer])
   }
 
   function retry(audio: Float32Array, modelSize: WhisperModelSize) {
