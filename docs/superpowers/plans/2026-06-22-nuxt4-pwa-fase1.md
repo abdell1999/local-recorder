@@ -1030,11 +1030,12 @@ describe('useTranscription', () => {
     const firstWorker = createFakeWorker()
     const secondWorker = createFakeWorker()
     const factory = vi.fn().mockReturnValueOnce(firstWorker).mockReturnValueOnce(secondWorker)
-    const { retry } = useTranscription(factory)
+    const { transcribe, retry } = useTranscription(factory)
+    transcribe(new Float32Array([0.1]), 'small')
 
     retry(new Float32Array([0.1]), 'small')
 
-    expect(firstWorker.terminate).not.toHaveBeenCalled()
+    expect(firstWorker.terminate).toHaveBeenCalled()
     expect(secondWorker.postMessage).toHaveBeenCalled()
   })
 })
@@ -1140,7 +1141,11 @@ async function getTranscriber(modelSize: WhisperModelSize) {
   post({ type: 'progress', status: 'loading-model' })
   const device = typeof navigator !== 'undefined' && 'gpu' in navigator ? 'webgpu' : 'wasm'
   post({ type: 'device', device })
-  transcriber = await pipeline('automatic-speech-recognition', getModelRepoId(modelSize), { device })
+  transcriber = await pipeline<'automatic-speech-recognition'>(
+    'automatic-speech-recognition',
+    getModelRepoId(modelSize),
+    { device },
+  )
   loadedModelSize = modelSize
   return transcriber
 }
