@@ -17,6 +17,7 @@ const transcriptionText = ref('')
 const transcriptionChunks = ref<{ text: string; timestamp: [number, number | null] }[]>([])
 const transcriptionError = ref<string | null>(null)
 const transcriptionDevice = ref<'webgpu' | 'wasm' | null>(null)
+const downloadProgress = ref<number | null>(null)
 
 vi.mock('../../../app/composables/useRecorder', () => ({
   useRecorder: () => ({ state: recorderState, errorMessage: recorderError, start: startRecording, stop: stopRecording }),
@@ -36,6 +37,7 @@ vi.mock('../../../app/composables/useTranscription', () => ({
     chunks: transcriptionChunks,
     errorMessage: transcriptionError,
     device: transcriptionDevice,
+    downloadProgress,
     transcribe,
     retry,
   }),
@@ -70,6 +72,7 @@ beforeEach(() => {
   transcriptionState.value = 'idle'
   transcriptionError.value = null
   transcriptionDevice.value = null
+  downloadProgress.value = null
 })
 
 describe('index page', () => {
@@ -149,5 +152,16 @@ describe('index page', () => {
     const wrapper = mountPage()
     await wrapper.findComponent(ModelSizePicker).vm.$emit('update:modelValue', 'medium')
     expect(setModelSize).toHaveBeenCalledWith('medium')
+  })
+
+  it('shows a progress bar while the model downloads', async () => {
+    const wrapper = mountPage()
+    expect(wrapper.find('[data-testid="model-download-progress"]').exists()).toBe(false)
+
+    downloadProgress.value = 42
+    await wrapper.vm.$nextTick()
+
+    const bar = wrapper.get<HTMLProgressElement>('[data-testid="model-download-progress"]')
+    expect(bar.element.value).toBe(42)
   })
 })

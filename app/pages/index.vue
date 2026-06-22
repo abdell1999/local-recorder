@@ -29,6 +29,7 @@ const {
   chunks: transcriptionChunks,
   errorMessage: transcriptionError,
   device: transcriptionDevice,
+  downloadProgress,
   transcribe,
   retry,
 } = useTranscription()
@@ -109,6 +110,12 @@ function handleRetry() {
       Tu navegador no soporta WebGPU: usando modo compatibilidad (más lento).
     </p>
     <p v-if="transcriptionState === 'loading-model'" data-testid="status-loading-model">Descargando modelo de transcripción…</p>
+    <progress
+      v-if="downloadProgress !== null"
+      data-testid="model-download-progress"
+      :value="downloadProgress"
+      max="100"
+    />
     <p v-if="transcriptionState === 'transcribing'" data-testid="status-transcribing">Transcribiendo…</p>
     <div v-if="transcriptionState === 'error'" data-testid="transcription-error">
       <p class="text-red-600">{{ transcriptionError ?? 'Ocurrió un error al transcribir.' }}</p>
