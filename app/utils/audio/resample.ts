@@ -1,10 +1,10 @@
 export function mixToMono(channelData: Float32Array[]): Float32Array {
-  if (channelData.length === 1) return channelData[0]
-  const length = channelData[0].length
+  if (channelData.length === 1) return channelData[0]!
+  const length = channelData[0]!.length
   const mono = new Float32Array(length)
   for (let i = 0; i < length; i++) {
     let sum = 0
-    for (const channel of channelData) sum += channel[i]
+    for (const channel of channelData) sum += channel[i]!
     mono[i] = sum / channelData.length
   }
   return mono
@@ -21,7 +21,7 @@ export function resampleTo16k(mono: Float32Array, originalSampleRate: number): F
     const lower = Math.floor(srcIndex)
     const upper = Math.min(lower + 1, mono.length - 1)
     const frac = srcIndex - lower
-    result[i] = mono[lower] + (mono[upper] - mono[lower]) * frac
+    result[i] = mono[lower]! + (mono[upper]! - mono[lower]!) * frac
   }
   return result
 }
