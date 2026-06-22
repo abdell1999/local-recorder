@@ -24,7 +24,8 @@ Transcripción por bloques al finalizar (no streaming): se transcribe el audio c
 - **Gestor de paquetes:** pnpm.
 - **Inferencia Whisper:** `@huggingface/transformers` (transformers.js) en un Web Worker, `device: 'webgpu'` con fallback automático a `'wasm'` si `navigator.gpu` no está disponible.
 - **PWA:** módulo `@vite-pwa/nuxt` (Workbox), `registerType: autoUpdate`.
-- **Decodificación de audio/vídeo importado:** Web Audio API nativa (`decodeAudioData` + resample a 16kHz mono vía `OfflineAudioContext`). Limitación conocida: contenedores/codecs exóticos pueden no decodificar; no se añade ffmpeg.wasm en esta fase (ver "Extensiones futuras").
+- **Decodificación de audio/vídeo importado:** Web Audio API nativa (`decodeAudioData`). Limitación conocida: contenedores/codecs exóticos pueden no decodificar; no se añade ffmpeg.wasm en esta fase (ver "Extensiones futuras").
+- **Resample a 16kHz mono:** implementación manual (mezcla a mono + interpolación lineal en `app/utils/audio/resample.ts`), no `OfflineAudioContext`. Decisión tomada durante la implementación (Tarea 4): `OfflineAudioContext` es asíncrona y solo existe en navegador, igual que `decodeAudioData` — usarla habría dejado el resampleo tan intestable como la decodificación. La interpolación lineal manual es determinista, pura y cubierta por tests unitarios sin necesidad de un navegador real. Limitación conocida: sin filtro anti-aliasing al reducir la frecuencia de muestreo (p. ej. 48kHz→16kHz); el impacto esperado en la precisión de Whisper es menor, dada su robustez documentada ante ruido y artefactos de audio.
 - **Testing:** Vitest (unit + componentes) y Playwright (E2E, worker de Whisper mockeado en CI).
 
 ## Estructura de carpetas
