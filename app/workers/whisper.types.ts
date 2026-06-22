@@ -32,9 +32,15 @@ export interface WhisperErrorMessage {
   message: string
 }
 
+export interface WhisperModelProgressMessage {
+  type: 'model-download-progress'
+  percent: number
+}
+
 export type WhisperWorkerRequest = WhisperTranscribeRequest
 export type WhisperWorkerResponse =
   | WhisperProgressMessage
   | WhisperDeviceMessage
+  | WhisperModelProgressMessage
   | WhisperResultMessage
   | WhisperErrorMessage

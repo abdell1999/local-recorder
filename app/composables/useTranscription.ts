@@ -23,6 +23,7 @@ export function useTranscription(createWorker: () => MinimalWorker = createDefau
   const chunks = shallowRef<WhisperChunk[]>([])
   const errorMessage = ref<string | null>(null)
   const device = ref<'webgpu' | 'wasm' | null>(null)
+  const downloadProgress = ref<number | null>(null)
   let worker: MinimalWorker | null = null
 
   function ensureWorker(): MinimalWorker {
@@ -32,15 +33,20 @@ export function useTranscription(createWorker: () => MinimalWorker = createDefau
       const message = event.data
       if (message.type === 'progress') {
         state.value = message.status
+        downloadProgress.value = null
+      } else if (message.type === 'model-download-progress') {
+        downloadProgress.value = message.percent
       } else if (message.type === 'device') {
         device.value = message.device
       } else if (message.type === 'result') {
         text.value = message.text
         chunks.value = message.chunks
         state.value = 'done'
+        downloadProgress.value = null
       } else if (message.type === 'error') {
         state.value = 'error'
         errorMessage.value = message.message
+        downloadProgress.value = null
       }
     }
     worker.onerror = () => {
@@ -62,5 +68,5 @@ export function useTranscription(createWorker: () => MinimalWorker = createDefau
     transcribe(audio, modelSize)
   }
 
-  return { state, text, chunks, errorMessage, device, transcribe, retry }
+  return { state, text, chunks, errorMessage, device, downloadProgress, transcribe, retry }
 }

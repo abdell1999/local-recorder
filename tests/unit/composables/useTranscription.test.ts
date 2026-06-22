@@ -86,4 +86,38 @@ describe('useTranscription', () => {
     expect(firstWorker.terminate).toHaveBeenCalled()
     expect(secondWorker.postMessage).toHaveBeenCalled()
   })
+
+  it('reflects model download progress messages from the worker', () => {
+    const worker = createFakeWorker()
+    const { downloadProgress, transcribe } = useTranscription(() => worker)
+    transcribe(new Float32Array([0.1]), 'small')
+
+    worker.onmessage?.({ data: { type: 'model-download-progress', percent: 42 } } as MessageEvent)
+
+    expect(downloadProgress.value).toBe(42)
+  })
+
+  it('resets download progress once transcription starts', () => {
+    const worker = createFakeWorker()
+    const { downloadProgress, state, transcribe } = useTranscription(() => worker)
+    transcribe(new Float32Array([0.1]), 'small')
+    worker.onmessage?.({ data: { type: 'model-download-progress', percent: 80 } } as MessageEvent)
+    expect(downloadProgress.value).toBe(80)
+
+    worker.onmessage?.({ data: { type: 'progress', status: 'transcribing' } } as MessageEvent)
+
+    expect(state.value).toBe('transcribing')
+    expect(downloadProgress.value).toBeNull()
+  })
+
+  it('resets download progress when the worker reports an error', () => {
+    const worker = createFakeWorker()
+    const { downloadProgress, transcribe } = useTranscription(() => worker)
+    transcribe(new Float32Array([0.1]), 'small')
+    worker.onmessage?.({ data: { type: 'model-download-progress', percent: 30 } } as MessageEvent)
+
+    worker.onmessage?.({ data: { type: 'error', message: 'boom' } } as MessageEvent)
+
+    expect(downloadProgress.value).toBeNull()
+  })
 })
