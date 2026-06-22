@@ -51,6 +51,9 @@ test.beforeEach(async ({ page }) => {
 
 test('importa un archivo, transcribe (worker mockeado) y exporta TXT', async ({ page }) => {
   await page.goto('/')
+  // Nuxt renderiza HTML en servidor antes de que Vue adjunte los listeners en
+  // el cliente; sin esperar a que la hidratación termine, los clics/inputs
+  // llegan al DOM "muerto" sin ningún error visible.
   await page.waitForLoadState('networkidle')
   await page.setInputFiles('[data-testid="file-input"]', {
     name: 'sample.wav',
@@ -68,6 +71,7 @@ test('importa un archivo, transcribe (worker mockeado) y exporta TXT', async ({ 
 
 test('muestra un error al importar un archivo no soportado', async ({ page }) => {
   await page.goto('/')
+  // Espera a que termine la hidratación de Vue (ver comentario del test anterior).
   await page.waitForLoadState('networkidle')
   await page.setInputFiles('[data-testid="file-input"]', {
     name: 'doc.pdf',
@@ -80,6 +84,7 @@ test('muestra un error al importar un archivo no soportado', async ({ page }) =>
 
 test('grava desde el micrófono, transcribe (worker mockeado) y exporta SRT', async ({ page }) => {
   await page.goto('/')
+  // Espera a que termine la hidratación de Vue (ver comentario del primer test).
   await page.waitForLoadState('networkidle')
   await page.getByTestId('record-button').click()
   await expect(page.getByTestId('recording-timer')).toBeVisible()
