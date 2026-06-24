@@ -86,10 +86,10 @@ test('grava desde el micrófono, transcribe (worker mockeado) y exporta SRT', as
   await page.goto('/')
   // Espera a que termine la hidratación de Vue (ver comentario del primer test).
   await page.waitForLoadState('networkidle')
-  await page.getByTestId('record-button').click()
+  await page.getByTestId('record-button-microphone').click()
   await expect(page.getByTestId('recording-timer')).toBeVisible()
   await page.waitForTimeout(1200)
-  await page.getByTestId('record-button').click()
+  await page.getByTestId('stop-button').click()
 
   await expect(page.getByTestId('transcript-editor')).toHaveValue('hola mundo de prueba', { timeout: 5000 })
 

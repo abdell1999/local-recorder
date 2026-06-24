@@ -6,7 +6,7 @@ import FileDropzone from '../components/importer/FileDropzone.vue'
 import TranscriptEditor from '../components/transcript/TranscriptEditor.vue'
 import ExportMenu from '../components/export/ExportMenu.vue'
 import ModelSizePicker from '../components/settings/ModelSizePicker.vue'
-import { useRecorder } from '../composables/useRecorder'
+import { useRecorder, type RecorderSource } from '../composables/useRecorder'
 import { useFileImport } from '../composables/useFileImport'
 import { useModelSelector } from '../composables/useModelSelector'
 import { useTranscription } from '../composables/useTranscription'
@@ -44,8 +44,8 @@ watch(transcriptionState, (state) => {
   if (state === 'done') editedText.value = transcriptionText.value
 })
 
-async function handleRecordStart() {
-  await startRecording()
+async function handleRecordStart(source: RecorderSource) {
+  await startRecording(source)
   if (recorderState.value !== 'recording') return
   elapsedSeconds.value = 0
   timerInterval = setInterval(() => {
@@ -94,11 +94,36 @@ function handleRetry() {
     </div>
 
     <section class="flex items-center gap-4">
-      <RecordButton :state="recorderState" @start="handleRecordStart" @stop="handleRecordStop" />
+      <RecordButton
+        source="microphone"
+        label="Grabar micrófono"
+        :state="recorderState"
+        @start="handleRecordStart('microphone')"
+      />
+      <RecordButton
+        source="tab"
+        label="Grabar pestaña"
+        :state="recorderState"
+        @start="handleRecordStart('tab')"
+      />
+      <button
+        v-if="recorderState === 'recording'"
+        data-testid="stop-button"
+        class="px-4 py-2 rounded font-semibold bg-red-600 text-white"
+        @click="handleRecordStop"
+      >
+        Detener
+      </button>
       <RecordingTimer v-if="recorderState === 'recording'" :seconds="elapsedSeconds" />
     </section>
-    <p v-if="recorderError" data-testid="recorder-error" class="text-red-600">
+    <p v-if="recorderError === 'mic-permission-denied'" data-testid="recorder-error" class="text-red-600">
       No se pudo acceder al micrófono. Revisa los permisos del navegador.
+    </p>
+    <p v-if="recorderError === 'tab-permission-denied'" data-testid="tab-permission-error" class="text-red-600">
+      No se concedió permiso para compartir la pestaña.
+    </p>
+    <p v-if="recorderError === 'tab-audio-not-shared'" data-testid="tab-audio-error" class="text-red-600">
+      No se compartió audio. Vuelve a intentarlo y marca "Compartir audio de la pestaña".
     </p>
 
     <FileDropzone @file-selected="handleFileSelected" @rejected="handleFileRejected" />

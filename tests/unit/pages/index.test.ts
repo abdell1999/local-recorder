@@ -49,12 +49,12 @@ vi.mock('../../../app/utils/audio/decodeAudioFile', () => ({
 import IndexPage from '../../../app/pages/index.vue'
 import FileDropzone from '../../../app/components/importer/FileDropzone.vue'
 import ModelSizePicker from '../../../app/components/settings/ModelSizePicker.vue'
+import RecordButton from '../../../app/components/recorder/RecordButton.vue'
 
 function mountPage() {
   return mount(IndexPage, {
     global: {
       stubs: {
-        RecordButton: true,
         RecordingTimer: true,
         TranscriptEditor: true,
         ExportMenu: true,
@@ -175,5 +175,47 @@ describe('index page', () => {
     expect(wrapper.find('[data-testid="no-speech-detected"]').exists()).toBe(true)
     expect(wrapper.findComponent({ name: 'TranscriptEditor' }).exists()).toBe(false)
     expect(wrapper.findComponent({ name: 'ExportMenu' }).exists()).toBe(false)
+  })
+
+  it('renders one RecordButton per source with the right labels', () => {
+    const wrapper = mountPage()
+    const buttons = wrapper.findAllComponents(RecordButton)
+    expect(buttons).toHaveLength(2)
+    expect(buttons[0]?.props()).toMatchObject({ source: 'microphone', label: 'Grabar micrófono' })
+    expect(buttons[1]?.props()).toMatchObject({ source: 'tab', label: 'Grabar pestaña' })
+  })
+
+  it('starts recording with the right source when each RecordButton emits start', async () => {
+    const wrapper = mountPage()
+    const buttons = wrapper.findAllComponents(RecordButton)
+
+    await buttons[1]?.vm.$emit('start')
+    expect(startRecording).toHaveBeenCalledWith('tab')
+
+    await buttons[0]?.vm.$emit('start')
+    expect(startRecording).toHaveBeenCalledWith('microphone')
+  })
+
+  it('shows the stop button only while recording', async () => {
+    const wrapper = mountPage()
+    expect(wrapper.find('[data-testid="stop-button"]').exists()).toBe(false)
+
+    recorderState.value = 'recording'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="stop-button"]').exists()).toBe(true)
+
+    await wrapper.get('[data-testid="stop-button"]').trigger('click')
+    expect(stopRecording).toHaveBeenCalled()
+  })
+
+  it('shows tab-specific error messages and hides the microphone one', async () => {
+    recorderError.value = 'tab-permission-denied'
+    const wrapper = mountPage()
+    expect(wrapper.find('[data-testid="tab-permission-error"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="recorder-error"]').exists()).toBe(false)
+
+    recorderError.value = 'tab-audio-not-shared'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('[data-testid="tab-audio-error"]').exists()).toBe(true)
   })
 })

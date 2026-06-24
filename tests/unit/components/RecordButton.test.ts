@@ -3,17 +3,20 @@ import { mount } from '@vue/test-utils'
 import RecordButton from '../../../app/components/recorder/RecordButton.vue'
 
 describe('RecordButton', () => {
-  it('shows "Grabar" and emits start when idle', async () => {
-    const wrapper = mount(RecordButton, { props: { state: 'idle' } })
-    expect(wrapper.text()).toContain('Grabar')
-    await wrapper.get('[data-testid="record-button"]').trigger('click')
+  it('shows the given label and emits start when clicked', async () => {
+    const wrapper = mount(RecordButton, { props: { state: 'idle', source: 'microphone', label: 'Grabar micrófono' } })
+    expect(wrapper.text()).toContain('Grabar micrófono')
+    await wrapper.get('[data-testid="record-button-microphone"]').trigger('click')
     expect(wrapper.emitted('start')).toHaveLength(1)
   })
 
-  it('shows "Detener" and emits stop when recording', async () => {
-    const wrapper = mount(RecordButton, { props: { state: 'recording' } })
-    expect(wrapper.text()).toContain('Detener')
-    await wrapper.get('[data-testid="record-button"]').trigger('click')
-    expect(wrapper.emitted('stop')).toHaveLength(1)
+  it('uses a distinct data-testid per source', () => {
+    const wrapper = mount(RecordButton, { props: { state: 'idle', source: 'tab', label: 'Grabar pestaña' } })
+    expect(wrapper.find('[data-testid="record-button-tab"]').exists()).toBe(true)
+  })
+
+  it('renders nothing while recording', () => {
+    const wrapper = mount(RecordButton, { props: { state: 'recording', source: 'microphone', label: 'Grabar micrófono' } })
+    expect(wrapper.find('[data-testid="record-button-microphone"]').exists()).toBe(false)
   })
 })
