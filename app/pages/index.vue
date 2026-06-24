@@ -123,8 +123,11 @@ function handleRetry() {
     </div>
 
     <template v-if="transcriptionState === 'done'">
-      <TranscriptEditor v-model="editedText" />
-      <ExportMenu :result="{ text: editedText, chunks: transcriptionChunks }" />
+      <p v-if="editedText.trim() === ''" data-testid="no-speech-detected">No se detectó voz en el audio.</p>
+      <template v-else>
+        <TranscriptEditor v-model="editedText" />
+        <ExportMenu :result="{ text: editedText, chunks: transcriptionChunks }" />
+      </template>
     </template>
   </main>
 </template>

@@ -164,4 +164,16 @@ describe('index page', () => {
     const bar = wrapper.get<HTMLProgressElement>('[data-testid="model-download-progress"]')
     expect(bar.element.value).toBe(42)
   })
+
+  it('shows a message instead of the editor when the transcription is empty', async () => {
+    transcriptionText.value = '   '
+    const wrapper = mountPage()
+
+    transcriptionState.value = 'done'
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="no-speech-detected"]').exists()).toBe(true)
+    expect(wrapper.findComponent({ name: 'TranscriptEditor' }).exists()).toBe(false)
+    expect(wrapper.findComponent({ name: 'ExportMenu' }).exists()).toBe(false)
+  })
 })
