@@ -158,9 +158,14 @@ importación.
   correspondiente; el botón "Detener" solo existe en el DOM cuando
   `recorderState === 'recording'` y llama a `stopRecording`; los dos
   mensajes de error nuevos se renderizan según el valor de `recorderError`.
-- Suite E2E (`transcription-flow.spec.ts`): sin cambios necesarios — los
-  tests E2E existentes de grabación usan el flujo de micrófono, que no
-  cambia de comportamiento.
+- Suite E2E (`transcription-flow.spec.ts`): el test de grabación por
+  micrófono sí necesita actualizarse — usa hoy el `data-testid="record-button"`
+  fijo tanto para iniciar como para detener la grabación (el botón antiguo
+  alternaba "Grabar"/"Detener" con un único testid). Con el nuevo
+  `data-testid` dinámico por fuente y el botón "Detener" independiente, el
+  test debe usar `record-button-microphone` para iniciar y `stop-button`
+  para detener. El comportamiento grabado (flujo de micrófono → transcripción
+  → exportación) no cambia, solo los selectores del test.
 
 ## Extensiones futuras
 
