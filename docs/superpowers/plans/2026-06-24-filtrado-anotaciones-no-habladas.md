@@ -90,10 +90,6 @@ describe('deriveText', () => {
     expect(deriveText([chunk(' Hola '), chunk('mundo')], 'irrelevant')).toBe('Hola mundo')
   })
 
-  it('returns an empty string when there are no surviving chunks', () => {
-    expect(deriveText([], 'irrelevant')).toBe('')
-  })
-
   it('falls back to the trimmed fallback text when there are no chunks and it is not an annotation', () => {
     expect(deriveText([], '  hola mundo  ')).toBe('hola mundo')
   })
@@ -141,7 +137,7 @@ export function deriveText(chunks: WhisperChunk[], fallbackText: string): string
 - [ ] **Step 4: Ejecutar el test para confirmar que pasa**
 
 Run: `pnpm test -- transcriptClean`
-Expected: PASS (13 tests passed)
+Expected: PASS (12 tests passed)
 
 - [ ] **Step 5: Tipar el proyecto**
 
