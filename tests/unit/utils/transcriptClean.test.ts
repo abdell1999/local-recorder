@@ -53,10 +53,6 @@ describe('deriveText', () => {
     expect(deriveText([chunk(' Hola '), chunk('mundo')], 'irrelevant')).toBe('Hola mundo')
   })
 
-  it('returns an empty string when there are no surviving chunks', () => {
-    expect(deriveText([], 'irrelevant')).toBe('')
-  })
-
   it('falls back to the trimmed fallback text when there are no chunks and it is not an annotation', () => {
     expect(deriveText([], '  hola mundo  ')).toBe('hola mundo')
   })

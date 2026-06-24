@@ -20,9 +20,5 @@ export function deriveText(chunks: WhisperChunk[], fallbackText: string): string
       .trim()
   }
   const trimmedFallback = fallbackText.trim()
-  if (isNonSpeechAnnotation(trimmedFallback)) {
-    return ''
-  }
-  // Only use fallback if it contains multiple words
-  return trimmedFallback.split(/\s+/).length > 1 ? trimmedFallback : ''
+  return isNonSpeechAnnotation(trimmedFallback) ? '' : trimmedFallback
 }
