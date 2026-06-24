@@ -30,6 +30,29 @@ const setModelSize = vi.fn()
 vi.mock('../../../app/composables/useModelSelector', () => ({
   useModelSelector: () => ({ modelSize, setModelSize }),
 }))
+
+const summarize = vi.fn()
+const retrySummarize = vi.fn()
+const setLlmModelSize = vi.fn()
+const llmModelSize = ref('0.5b')
+const summarizerState = ref('idle')
+const summary = ref('')
+const summarizerError = ref<string | null>(null)
+const summaryDownloadProgress = ref<number | null>(null)
+
+vi.mock('../../../app/composables/useLlmModelSelector', () => ({
+  useLlmModelSelector: () => ({ modelSize: llmModelSize, setModelSize: setLlmModelSize }),
+}))
+vi.mock('../../../app/composables/useSummarizer', () => ({
+  useSummarizer: () => ({
+    state: summarizerState,
+    summary,
+    errorMessage: summarizerError,
+    downloadProgress: summaryDownloadProgress,
+    summarize,
+    retry: retrySummarize,
+  }),
+}))
 vi.mock('../../../app/composables/useTranscription', () => ({
   useTranscription: () => ({
     state: transcriptionState,
@@ -50,6 +73,8 @@ import IndexPage from '../../../app/pages/index.vue'
 import FileDropzone from '../../../app/components/importer/FileDropzone.vue'
 import ModelSizePicker from '../../../app/components/settings/ModelSizePicker.vue'
 import RecordButton from '../../../app/components/recorder/RecordButton.vue'
+import LlmModelSizePicker from '../../../app/components/settings/LlmModelSizePicker.vue'
+import SummaryEditor from '../../../app/components/summary/SummaryEditor.vue'
 
 function mountPage() {
   return mount(IndexPage, {
@@ -59,6 +84,8 @@ function mountPage() {
         TranscriptEditor: true,
         ExportMenu: true,
         ModelSizePicker: true,
+        LlmModelSizePicker: true,
+        SummaryEditor: true,
       },
     },
   })
@@ -73,6 +100,10 @@ beforeEach(() => {
   transcriptionError.value = null
   transcriptionDevice.value = null
   downloadProgress.value = null
+  summarizerState.value = 'idle'
+  summarizerError.value = null
+  summaryDownloadProgress.value = null
+  summary.value = ''
 })
 
 describe('index page', () => {
@@ -217,5 +248,72 @@ describe('index page', () => {
     recorderError.value = 'tab-audio-not-shared'
     await wrapper.vm.$nextTick()
     expect(wrapper.find('[data-testid="tab-audio-error"]').exists()).toBe(true)
+  })
+
+  it('shows the summarize controls only once there is transcribed text', async () => {
+    transcriptionText.value = 'texto reconocido'
+    const wrapper = mountPage()
+    expect(wrapper.find('[data-testid="summarize-button"]').exists()).toBe(false)
+
+    transcriptionState.value = 'done'
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="summarize-button"]').exists()).toBe(true)
+    expect(wrapper.findComponent(LlmModelSizePicker).exists()).toBe(true)
+  })
+
+  it('disables the summarize controls while the summary is loading or generating', async () => {
+    transcriptionText.value = 'texto reconocido'
+    const wrapper = mountPage()
+    transcriptionState.value = 'done'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get<HTMLButtonElement>('[data-testid="summarize-button"]').element.disabled).toBe(false)
+
+    summarizerState.value = 'loading-model'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get<HTMLButtonElement>('[data-testid="summarize-button"]').element.disabled).toBe(true)
+
+    summarizerState.value = 'summarizing'
+    await wrapper.vm.$nextTick()
+    expect(wrapper.get<HTMLButtonElement>('[data-testid="summarize-button"]').element.disabled).toBe(true)
+  })
+
+  it('summarizes the edited transcript with the selected LLM size when clicked', async () => {
+    transcriptionText.value = 'texto reconocido'
+    const wrapper = mountPage()
+    transcriptionState.value = 'done'
+    await wrapper.vm.$nextTick()
+
+    await wrapper.get('[data-testid="summarize-button"]').trigger('click')
+
+    expect(summarize).toHaveBeenCalledWith('texto reconocido', '0.5b')
+  })
+
+  it('shows the summary editor once the summary is done', async () => {
+    transcriptionText.value = 'texto reconocido'
+    summary.value = 'TL;DR: resumen'
+    const wrapper = mountPage()
+    transcriptionState.value = 'done'
+    await wrapper.vm.$nextTick()
+
+    summarizerState.value = 'done'
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.findComponent(SummaryEditor).props('modelValue')).toBe('TL;DR: resumen')
+  })
+
+  it('shows a summarize error with a retry button', async () => {
+    transcriptionText.value = 'texto reconocido'
+    const wrapper = mountPage()
+    transcriptionState.value = 'done'
+    await wrapper.vm.$nextTick()
+
+    summarizerState.value = 'error'
+    summarizerError.value = 'boom'
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[data-testid="summarize-error"]').text()).toContain('boom')
+    await wrapper.get('[data-testid="summarize-retry-button"]').trigger('click')
+    expect(retrySummarize).toHaveBeenCalledWith('texto reconocido', '0.5b')
   })
 })

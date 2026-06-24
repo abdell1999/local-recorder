@@ -6,10 +6,14 @@ import FileDropzone from '../components/importer/FileDropzone.vue'
 import TranscriptEditor from '../components/transcript/TranscriptEditor.vue'
 import ExportMenu from '../components/export/ExportMenu.vue'
 import ModelSizePicker from '../components/settings/ModelSizePicker.vue'
+import LlmModelSizePicker from '../components/settings/LlmModelSizePicker.vue'
+import SummaryEditor from '../components/summary/SummaryEditor.vue'
 import { useRecorder, type RecorderSource } from '../composables/useRecorder'
 import { useFileImport } from '../composables/useFileImport'
 import { useModelSelector } from '../composables/useModelSelector'
+import { useLlmModelSelector } from '../composables/useLlmModelSelector'
 import { useTranscription } from '../composables/useTranscription'
+import { useSummarizer } from '../composables/useSummarizer'
 import { decodeAudioFile } from '../utils/audio/decodeAudioFile'
 
 const {
@@ -33,6 +37,31 @@ const {
   transcribe,
   retry,
 } = useTranscription()
+
+const { modelSize: llmModelSize, setModelSize: setLlmModelSize } = useLlmModelSelector()
+
+const {
+  state: summarizerState,
+  summary,
+  errorMessage: summarizerError,
+  downloadProgress: summaryDownloadProgress,
+  summarize,
+  retry: retrySummarize,
+} = useSummarizer()
+
+const editedSummary = ref('')
+
+watch(summarizerState, (state) => {
+  if (state === 'done') editedSummary.value = summary.value
+})
+
+function handleSummarize() {
+  summarize(editedText.value, llmModelSize.value)
+}
+
+function handleSummarizeRetry() {
+  retrySummarize(editedText.value, llmModelSize.value)
+}
 
 const elapsedSeconds = ref(0)
 const editedText = ref('')
@@ -152,6 +181,36 @@ function handleRetry() {
       <template v-else>
         <TranscriptEditor v-model="editedText" />
         <ExportMenu :result="{ text: editedText, chunks: transcriptionChunks }" />
+
+        <div class="flex items-center gap-2">
+          <span class="text-sm text-gray-600">Modelo de resumen:</span>
+          <LlmModelSizePicker
+            :model-value="llmModelSize"
+            :disabled="summarizerState === 'loading-model' || summarizerState === 'summarizing'"
+            @update:model-value="setLlmModelSize"
+          />
+          <button
+            data-testid="summarize-button"
+            class="px-4 py-2 rounded font-semibold bg-blue-600 text-white"
+            :disabled="summarizerState === 'loading-model' || summarizerState === 'summarizing'"
+            @click="handleSummarize"
+          >
+            Resumir
+          </button>
+        </div>
+        <p v-if="summarizerState === 'loading-model'" data-testid="status-loading-model-llm">Descargando modelo de resumen…</p>
+        <progress
+          v-if="summaryDownloadProgress !== null"
+          data-testid="llm-download-progress"
+          :value="summaryDownloadProgress"
+          max="100"
+        />
+        <p v-if="summarizerState === 'summarizing'" data-testid="status-summarizing-llm">Generando resumen…</p>
+        <div v-if="summarizerState === 'error'" data-testid="summarize-error">
+          <p class="text-red-600">{{ summarizerError ?? 'Ocurrió un error al generar el resumen.' }}</p>
+          <button data-testid="summarize-retry-button" class="underline" @click="handleSummarizeRetry">Reintentar</button>
+        </div>
+        <SummaryEditor v-if="summarizerState === 'done'" v-model="editedSummary" />
       </template>
     </template>
   </main>
