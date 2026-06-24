@@ -3,6 +3,7 @@ import { getModelRepoId, type WhisperModelSize } from '../utils/whisperModels'
 import type { WhisperWorkerRequest, WhisperWorkerResponse, WhisperChunk } from './whisper.types'
 import { filterNonSpeechChunks, deriveText } from '../utils/transcriptClean'
 import { createProgressAggregator } from '../utils/modelDownloadProgress'
+import { loadWithDeviceFallback } from '../utils/modelDevice'
 
 let transcriber: AutomaticSpeechRecognitionPipeline | null = null
 let loadedModelSize: WhisperModelSize | null = null
@@ -20,16 +21,16 @@ function post(message: WhisperWorkerResponse) {
 async function getTranscriber(modelSize: WhisperModelSize) {
   if (transcriber && loadedModelSize === modelSize) return transcriber
   post({ type: 'progress', status: 'loading-model' })
-  const device = typeof navigator !== 'undefined' && 'gpu' in navigator ? 'webgpu' : 'wasm'
+
+  const { result, device } = await loadWithDeviceFallback((device) =>
+    pipeline<'automatic-speech-recognition'>('automatic-speech-recognition', getModelRepoId(modelSize), {
+      device,
+      progress_callback: createProgressAggregator((percent) => post({ type: 'model-download-progress', percent })),
+    }),
+  )
   post({ type: 'device', device })
 
-  const onProgress = createProgressAggregator((percent) => post({ type: 'model-download-progress', percent }))
-
-  transcriber = await pipeline<'automatic-speech-recognition'>(
-    'automatic-speech-recognition',
-    getModelRepoId(modelSize),
-    { device, progress_callback: onProgress },
-  )
+  transcriber = result
   loadedModelSize = modelSize
   return transcriber
 }
