@@ -1,7 +1,8 @@
-import { pipeline, type AutomaticSpeechRecognitionPipeline, type ProgressInfo } from '@huggingface/transformers'
+import { pipeline, type AutomaticSpeechRecognitionPipeline } from '@huggingface/transformers'
 import { getModelRepoId, type WhisperModelSize } from '../utils/whisperModels'
 import type { WhisperWorkerRequest, WhisperWorkerResponse, WhisperChunk } from './whisper.types'
 import { filterNonSpeechChunks, deriveText } from '../utils/transcriptClean'
+import { createProgressAggregator } from '../utils/modelDownloadProgress'
 
 let transcriber: AutomaticSpeechRecognitionPipeline | null = null
 let loadedModelSize: WhisperModelSize | null = null
@@ -22,25 +23,7 @@ async function getTranscriber(modelSize: WhisperModelSize) {
   const device = typeof navigator !== 'undefined' && 'gpu' in navigator ? 'webgpu' : 'wasm'
   post({ type: 'device', device })
 
-  const fileBytes = new Map<string, { loaded: number; total: number }>()
-  let lastPostedPercent = -1
-
-  function onProgress(info: ProgressInfo) {
-    if (info.status !== 'progress') return
-    fileBytes.set(info.file, { loaded: info.loaded, total: info.total })
-    let loadedSum = 0
-    let totalSum = 0
-    for (const entry of fileBytes.values()) {
-      loadedSum += entry.loaded
-      totalSum += entry.total
-    }
-    if (totalSum === 0) return
-    const percent = Math.round((loadedSum / totalSum) * 100)
-    if (percent !== lastPostedPercent) {
-      lastPostedPercent = percent
-      post({ type: 'model-download-progress', percent })
-    }
-  }
+  const onProgress = createProgressAggregator((percent) => post({ type: 'model-download-progress', percent }))
 
   transcriber = await pipeline<'automatic-speech-recognition'>(
     'automatic-speech-recognition',
