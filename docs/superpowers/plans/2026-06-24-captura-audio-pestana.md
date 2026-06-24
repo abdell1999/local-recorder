@@ -196,17 +196,29 @@ git commit -m "Añade captura de audio de pestaña a useRecorder"
 
 ---
 
-### Task 2: `RecordButton` con `source`/`label`
+### Task 2: `RecordButton` con `source`/`label` y conexión en `index.vue`
+
+**Por qué una sola tarea:** cambiar la API de `RecordButton` (props
+`source`/`label`, deja de emitir `stop`, deja de renderizarse en
+`'recording'`) y adaptar su único consumidor (`index.vue`) son cambios
+acoplados — no hay forma de aplicar uno sin el otro y dejar el repositorio
+en verde (`pnpm test`/typecheck pasando) en el commit intermedio. Como se
+trabaja siempre directamente en `main` (`CLAUDE.md`), nunca se debe dejar
+un commit en `main` con la suite o el tipado en rojo, así que ambos cambios
+van en la misma tarea con un único commit final.
 
 **Files:**
 - Modify: `app/components/recorder/RecordButton.vue`
 - Modify: `tests/unit/components/RecordButton.test.ts`
+- Modify: `app/pages/index.vue`
+- Modify: `tests/unit/pages/index.test.ts`
+- Modify: `tests/e2e/transcription-flow.spec.ts`
 
 **Interfaces:**
-- Consumes: nada de la Tarea 1 directamente (este componente no llama a `useRecorder`).
-- Produces: nuevas props `source: 'microphone' | 'tab'`, `label: string` (sustituye el texto fijo `'Grabar'`); ya no emite `stop` (solo `start`); ya no se renderiza cuando `state === 'recording'`; `data-testid` pasa a ser `` `record-button-${source}` `` en vez del fijo `'record-button'`. Consumido por la Tarea 3 (`index.vue`), que monta dos instancias.
+- Consumes: el tipo `RecorderSource` exportado por `app/composables/useRecorder.ts` (Tarea 1) y `start(source: RecorderSource)`.
+- Produces: nada para tareas posteriores — esta es la última tarea del plan.
 
-- [ ] **Step 1: Escribir los tests que fallan**
+- [ ] **Step 1: Escribir los tests que fallan para `RecordButton`**
 
 Reemplazar el contenido completo de `tests/unit/components/RecordButton.test.ts` por:
 
@@ -246,7 +258,9 @@ Reemplazar el contenido completo del archivo por:
 
 ```vue
 <script setup lang="ts">
-defineProps<{ state: 'idle' | 'recording' | 'stopped' | 'error'; source: 'microphone' | 'tab'; label: string }>()
+import type { RecorderSource } from '../../composables/useRecorder'
+
+defineProps<{ state: 'idle' | 'recording' | 'stopped' | 'error'; source: RecorderSource; label: string }>()
 const emit = defineEmits<{ start: [] }>()
 </script>
 
@@ -262,41 +276,17 @@ const emit = defineEmits<{ start: [] }>()
 </template>
 ```
 
-- [ ] **Step 4: Ejecutar los tests para confirmar que pasan**
+- [ ] **Step 4: Ejecutar los tests de `RecordButton` para confirmar que pasan**
 
 Run: `pnpm test -- RecordButton`
 Expected: PASS (3 tests passed)
 
-- [ ] **Step 5: Ejecutar la suite completa**
+No correr `pnpm test` completo ni `pnpm dlx nuxi typecheck` todavía — en
+este punto intermedio fallarían (`index.vue` aún monta `RecordButton` sin
+las props `source`/`label` que ahora exige), y se van a corregir en los
+siguientes steps de esta misma tarea antes de cualquier commit.
 
-Run: `pnpm test`
-Expected: FAIL en `tests/unit/pages/index.test.ts` — esperado en este punto, porque `index.vue` todavía monta `<RecordButton :state="recorderState" @start="handleRecordStart" @stop="handleRecordStop" />` sin las props `source`/`label` que el componente ahora exige. Esto se corrige en la Tarea 3. No corregir `index.vue` en esta tarea.
-
-- [ ] **Step 6: Tipar el proyecto**
-
-Run: `pnpm dlx nuxi typecheck`
-Expected: errores de tipado esperados en `app/pages/index.vue` (props `source`/`label` faltantes) — mismo motivo que el Step 5, se corrige en la Tarea 3.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add app/components/recorder/RecordButton.vue tests/unit/components/RecordButton.test.ts
-git commit -m "Añade props source/label a RecordButton y oculta el botón mientras grabar"
-```
-
----
-
-### Task 3: Conectar las dos fuentes en `index.vue`
-
-**Files:**
-- Modify: `app/pages/index.vue`
-- Modify: `tests/unit/pages/index.test.ts`
-
-**Interfaces:**
-- Consumes: `start(source: RecorderSource)` de `useRecorder` (Tarea 1); `RecordButton` con props `source`/`label`, evento `start` sin payload (Tarea 2).
-- No produce nada nuevo para tareas posteriores — esta tarea es la integración final del plan.
-
-- [ ] **Step 1: Escribir los tests que fallan**
+- [ ] **Step 5: Escribir los tests que fallan para `index.vue`**
 
 En `tests/unit/pages/index.test.ts`, añadir el import de `RecordButton` junto a los demás:
 
@@ -385,12 +375,21 @@ Añadir al final del `describe('index page', ...)`, antes del cierre:
   })
 ```
 
-- [ ] **Step 2: Ejecutar los tests para confirmar que fallan**
+- [ ] **Step 6: Ejecutar los tests de `index.vue` para confirmar que fallan**
 
 Run: `pnpm test -- index`
 Expected: FAIL — `index.vue` todavía monta un único `RecordButton` sin `source`/`label`, no tiene `data-testid="stop-button"`, y su único mensaje de error (`recorder-error`) se muestra para cualquier `recorderError` truthy, no solo `'mic-permission-denied'`.
 
-- [ ] **Step 3: Modificar `app/pages/index.vue`**
+- [ ] **Step 7: Modificar `app/pages/index.vue`**
+
+Cambiar el import de `useRecorder`:
+```ts
+import { useRecorder } from '../composables/useRecorder'
+```
+por:
+```ts
+import { useRecorder, type RecorderSource } from '../composables/useRecorder'
+```
 
 Cambiar la función `handleRecordStart`:
 ```ts
@@ -405,7 +404,7 @@ async function handleRecordStart() {
 ```
 por:
 ```ts
-async function handleRecordStart(source: 'microphone' | 'tab') {
+async function handleRecordStart(source: RecorderSource) {
   await startRecording(source)
   if (recorderState.value !== 'recording') return
   elapsedSeconds.value = 0
@@ -461,22 +460,22 @@ por:
     </p>
 ```
 
-- [ ] **Step 4: Ejecutar los tests para confirmar que pasan**
+- [ ] **Step 8: Ejecutar los tests de `index.vue` para confirmar que pasan**
 
 Run: `pnpm test -- index`
 Expected: PASS (12 tests passed)
 
-- [ ] **Step 5: Ejecutar la suite completa**
+- [ ] **Step 9: Ejecutar la suite completa**
 
 Run: `pnpm test`
-Expected: PASS (todos los tests pasan, sin regresiones — esto también confirma que el Step 5 pendiente de la Tarea 2 queda resuelto)
+Expected: PASS (todos los tests pasan, sin regresiones)
 
-- [ ] **Step 6: Tipar el proyecto**
+- [ ] **Step 10: Tipar el proyecto**
 
 Run: `pnpm dlx nuxi typecheck`
-Expected: sin errores (esto también confirma que el Step 6 pendiente de la Tarea 2 queda resuelto)
+Expected: sin errores
 
-- [ ] **Step 7: Actualizar el test E2E de grabación**
+- [ ] **Step 11: Actualizar el test E2E de grabación**
 
 `tests/e2e/transcription-flow.spec.ts` tiene un test que usa el antiguo
 `data-testid="record-button"` fijo, tanto para iniciar como para detener la
@@ -511,16 +510,16 @@ test('grava desde el micrófono, transcribe (worker mockeado) y exporta SRT', as
   await expect(page.getByTestId('transcript-editor')).toHaveValue('hola mundo de prueba', { timeout: 5000 })
 ```
 
-- [ ] **Step 8: Ejecutar la suite E2E**
+- [ ] **Step 12: Ejecutar la suite E2E**
 
 Run: `pnpm test:e2e`
 Expected: PASS (4 tests passed)
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 13: Commit**
 
 ```bash
-git add app/pages/index.vue tests/unit/pages/index.test.ts tests/e2e/transcription-flow.spec.ts
-git commit -m "Conecta la captura de audio de pestaña en la página principal"
+git add app/components/recorder/RecordButton.vue tests/unit/components/RecordButton.test.ts app/pages/index.vue tests/unit/pages/index.test.ts tests/e2e/transcription-flow.spec.ts
+git commit -m "Añade RecordButton con source/label y conecta la captura de audio de pestaña en la página principal"
 ```
 
 ---
