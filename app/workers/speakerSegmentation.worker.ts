@@ -2,7 +2,6 @@ import { AutoModelForAudioFrameClassification, AutoProcessor } from '@huggingfac
 import type { Tensor } from '@huggingface/transformers'
 import { computeWindows } from '../utils/audioWindows'
 import { createProgressAggregator } from '../utils/modelDownloadProgress'
-import { loadWithDeviceFallback } from '../utils/modelDevice'
 import type {
   SpeakerSegmentationWorkerRequest,
   SpeakerSegmentationWorkerResponse,
@@ -38,16 +37,19 @@ function post(message: SpeakerSegmentationWorkerResponse) {
 async function getModelAndProcessor() {
   if (model && processor) return { model, processor }
   post({ type: 'progress', status: 'loading-model' })
-
-  const { result, device } = await loadWithDeviceFallback((device) =>
-    AutoModelForAudioFrameClassification.from_pretrained(MODEL_ID, {
-      device,
-      progress_callback: createProgressAggregator((percent) => post({ type: 'model-download-progress', percent })),
-    }),
-  )
+  // Heurística usada solo como pista para la UI y para el dtype — la
+  // selección real de backend la hace onnxruntime-web internamente vía
+  // device:'auto' (ver docs/superpowers/specs/2026-06-24-fix-device-auto-design.md).
+  const device = typeof navigator !== 'undefined' && 'gpu' in navigator ? 'webgpu' : 'wasm'
   post({ type: 'device', device })
 
-  model = result
+  const onProgress = createProgressAggregator((percent) => post({ type: 'model-download-progress', percent }))
+
+  model = await AutoModelForAudioFrameClassification.from_pretrained(MODEL_ID, {
+    device: 'auto',
+    dtype: device === 'wasm' ? 'q8' : undefined,
+    progress_callback: onProgress,
+  })
   processor = await AutoProcessor.from_pretrained(MODEL_ID)
   return { model, processor }
 }
