@@ -65,7 +65,7 @@ distinto de Whisper— ejecutándose también localmente en el navegador vía
   `LLM_MODELS`, props `modelValue: LlmModelSize` y `disabled?: boolean`,
   emite `update:modelValue`. `data-testid="llm-model-size-picker"`.
 
-- **`app/workers/modelDownloadProgress.ts`** (nuevo): extrae la lógica de
+- **`app/utils/modelDownloadProgress.ts`** (nuevo): extrae la lógica de
   agregación de progreso ya existente en `whisper.worker.ts` (`Map<string,
   {loaded, total}>` por archivo, recalcula porcentaje global, solo invoca
   el callback cuando el valor redondeado cambia) en una función pura:
