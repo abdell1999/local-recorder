@@ -5,6 +5,12 @@ import type { WhisperWorkerRequest, WhisperWorkerResponse, WhisperChunk } from '
 let transcriber: AutomaticSpeechRecognitionPipeline | null = null
 let loadedModelSize: WhisperModelSize | null = null
 
+// Valores recomendados por la documentación de @huggingface/transformers para
+// audio de más de 30s: sin esto, WhisperFeatureExtractor trunca el audio a los
+// primeros 30 segundos y descarta el resto antes de que llegue al modelo.
+const CHUNK_LENGTH_S = 30
+const STRIDE_LENGTH_S = 5
+
 function post(message: WhisperWorkerResponse) {
   ;(self as unknown as Worker).postMessage(message)
 }
@@ -49,7 +55,11 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
   try {
     const asr = await getTranscriber(modelSize)
     post({ type: 'progress', status: 'transcribing' })
-    const output = await asr(audio, { return_timestamps: true })
+    const output = await asr(audio, {
+      return_timestamps: true,
+      chunk_length_s: CHUNK_LENGTH_S,
+      stride_length_s: STRIDE_LENGTH_S,
+    })
     const rawChunks = Array.isArray(output) ? output[0]?.chunks ?? [] : output.chunks ?? []
     const chunks: WhisperChunk[] = rawChunks.map((chunk: { text: string; timestamp: [number, number | null] }) => ({
       text: chunk.text,
