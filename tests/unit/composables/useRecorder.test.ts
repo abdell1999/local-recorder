@@ -53,4 +53,50 @@ describe('useRecorder', () => {
     expect(state.value).toBe('error')
     expect(errorMessage.value).toBe('mic-permission-denied')
   })
+
+  it('starts recording from a shared tab and stops its video track', async () => {
+    const audioTrack = { stop: vi.fn() }
+    const videoTrack = { stop: vi.fn() }
+    const fakeStream = {
+      getTracks: () => [audioTrack, videoTrack],
+      getAudioTracks: () => [audioTrack],
+      getVideoTracks: () => [videoTrack],
+    } as unknown as MediaStream
+    vi.stubGlobal('navigator', { mediaDevices: { getDisplayMedia: vi.fn().mockResolvedValue(fakeStream) } })
+
+    const { state, start } = useRecorder()
+    await start('tab')
+
+    expect(state.value).toBe('recording')
+    expect(videoTrack.stop).toHaveBeenCalled()
+  })
+
+  it('sets an error state when the shared tab has no audio track', async () => {
+    const videoTrack = { stop: vi.fn() }
+    const fakeStream = {
+      getTracks: () => [videoTrack],
+      getAudioTracks: () => [],
+      getVideoTracks: () => [videoTrack],
+    } as unknown as MediaStream
+    vi.stubGlobal('navigator', { mediaDevices: { getDisplayMedia: vi.fn().mockResolvedValue(fakeStream) } })
+
+    const { state, errorMessage, start } = useRecorder()
+    await start('tab')
+
+    expect(state.value).toBe('error')
+    expect(errorMessage.value).toBe('tab-audio-not-shared')
+    expect(videoTrack.stop).toHaveBeenCalled()
+  })
+
+  it('sets an error state when the tab share picker is cancelled', async () => {
+    vi.stubGlobal('navigator', {
+      mediaDevices: { getDisplayMedia: vi.fn().mockRejectedValue(new Error('cancelled')) },
+    })
+
+    const { state, errorMessage, start } = useRecorder()
+    await start('tab')
+
+    expect(state.value).toBe('error')
+    expect(errorMessage.value).toBe('tab-permission-denied')
+  })
 })

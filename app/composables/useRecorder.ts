@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 
 export type RecorderState = 'idle' | 'recording' | 'stopped' | 'error'
+export type RecorderSource = 'microphone' | 'tab'
 
 export function useRecorder() {
   const state = ref<RecorderState>('idle')
@@ -9,16 +10,40 @@ export function useRecorder() {
   let chunks: Blob[] = []
   let stream: MediaStream | null = null
 
-  async function start() {
-    errorMessage.value = null
-    chunks = []
+  async function getMicrophoneStream(): Promise<MediaStream | null> {
     try {
-      stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      return await navigator.mediaDevices.getUserMedia({ audio: true })
     } catch {
       state.value = 'error'
       errorMessage.value = 'mic-permission-denied'
-      return
+      return null
     }
+  }
+
+  async function getTabStream(): Promise<MediaStream | null> {
+    let tabStream: MediaStream
+    try {
+      tabStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+    } catch {
+      state.value = 'error'
+      errorMessage.value = 'tab-permission-denied'
+      return null
+    }
+    tabStream.getVideoTracks().forEach((track) => track.stop())
+    if (tabStream.getAudioTracks().length === 0) {
+      state.value = 'error'
+      errorMessage.value = 'tab-audio-not-shared'
+      return null
+    }
+    return tabStream
+  }
+
+  async function start(source: RecorderSource = 'microphone') {
+    errorMessage.value = null
+    chunks = []
+    stream = source === 'tab' ? await getTabStream() : await getMicrophoneStream()
+    if (!stream) return
+
     mediaRecorder = new MediaRecorder(stream)
     mediaRecorder.ondataavailable = (event) => {
       if (event.data.size > 0) chunks.push(event.data)
