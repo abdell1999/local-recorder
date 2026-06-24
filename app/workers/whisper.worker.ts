@@ -1,6 +1,7 @@
 import { pipeline, type AutomaticSpeechRecognitionPipeline, type ProgressInfo } from '@huggingface/transformers'
 import { getModelRepoId, type WhisperModelSize } from '../utils/whisperModels'
 import type { WhisperWorkerRequest, WhisperWorkerResponse, WhisperChunk } from './whisper.types'
+import { filterNonSpeechChunks, deriveText } from '../utils/transcriptClean'
 
 let transcriber: AutomaticSpeechRecognitionPipeline | null = null
 let loadedModelSize: WhisperModelSize | null = null
@@ -61,11 +62,13 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
       stride_length_s: STRIDE_LENGTH_S,
     })
     const rawChunks = Array.isArray(output) ? output[0]?.chunks ?? [] : output.chunks ?? []
-    const chunks: WhisperChunk[] = rawChunks.map((chunk: { text: string; timestamp: [number, number | null] }) => ({
+    const rawText = Array.isArray(output) ? output[0]?.text ?? '' : output.text
+    const mappedChunks: WhisperChunk[] = rawChunks.map((chunk: { text: string; timestamp: [number, number | null] }) => ({
       text: chunk.text,
       timestamp: chunk.timestamp,
     }))
-    const text = Array.isArray(output) ? output[0]?.text ?? '' : output.text
+    const chunks = filterNonSpeechChunks(mappedChunks)
+    const text = deriveText(chunks, rawText)
     post({ type: 'result', text, chunks })
   } catch (error) {
     post({ type: 'error', message: error instanceof Error ? error.message : 'unknown-error' })
