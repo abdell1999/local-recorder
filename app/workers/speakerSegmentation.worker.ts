@@ -2,6 +2,7 @@ import { AutoModelForAudioFrameClassification, AutoProcessor } from '@huggingfac
 import type { Tensor } from '@huggingface/transformers'
 import { computeWindows } from '../utils/audioWindows'
 import { createProgressAggregator } from '../utils/modelDownloadProgress'
+import { loadWithDeviceFallback } from '../utils/modelDevice'
 import type {
   SpeakerSegmentationWorkerRequest,
   SpeakerSegmentationWorkerResponse,
@@ -37,15 +38,16 @@ function post(message: SpeakerSegmentationWorkerResponse) {
 async function getModelAndProcessor() {
   if (model && processor) return { model, processor }
   post({ type: 'progress', status: 'loading-model' })
-  const device = typeof navigator !== 'undefined' && 'gpu' in navigator ? 'webgpu' : 'wasm'
+
+  const { result, device } = await loadWithDeviceFallback((device) =>
+    AutoModelForAudioFrameClassification.from_pretrained(MODEL_ID, {
+      device,
+      progress_callback: createProgressAggregator((percent) => post({ type: 'model-download-progress', percent })),
+    }),
+  )
   post({ type: 'device', device })
 
-  const onProgress = createProgressAggregator((percent) => post({ type: 'model-download-progress', percent }))
-
-  model = await AutoModelForAudioFrameClassification.from_pretrained(MODEL_ID, {
-    device,
-    progress_callback: onProgress,
-  })
+  model = result
   processor = await AutoProcessor.from_pretrained(MODEL_ID)
   return { model, processor }
 }
