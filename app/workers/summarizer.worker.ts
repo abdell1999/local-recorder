@@ -2,6 +2,7 @@ import { pipeline, type TextGenerationPipeline, type TextGenerationOutput, type 
 import { getLlmModelRepoId, type LlmModelSize } from '../utils/llmModels'
 import type { SummarizerWorkerRequest, SummarizerWorkerResponse } from './summarizer.types'
 import { createProgressAggregator } from '../utils/modelDownloadProgress'
+import { loadWithDeviceFallback } from '../utils/modelDevice'
 
 let generator: TextGenerationPipeline | null = null
 let loadedModelSize: LlmModelSize | null = null
@@ -19,16 +20,16 @@ function post(message: SummarizerWorkerResponse) {
 async function getGenerator(modelSize: LlmModelSize) {
   if (generator && loadedModelSize === modelSize) return generator
   post({ type: 'progress', status: 'loading-model' })
-  const device = typeof navigator !== 'undefined' && 'gpu' in navigator ? 'webgpu' : 'wasm'
+
+  const { result, device } = await loadWithDeviceFallback((device) =>
+    pipeline<'text-generation'>('text-generation', getLlmModelRepoId(modelSize), {
+      device,
+      progress_callback: createProgressAggregator((percent) => post({ type: 'model-download-progress', percent })),
+    }),
+  )
   post({ type: 'device', device })
 
-  const onProgress = createProgressAggregator((percent) => post({ type: 'model-download-progress', percent }))
-
-  generator = await pipeline<'text-generation'>(
-    'text-generation',
-    getLlmModelRepoId(modelSize),
-    { device, progress_callback: onProgress },
-  )
+  generator = result
   loadedModelSize = modelSize
   return generator
 }
