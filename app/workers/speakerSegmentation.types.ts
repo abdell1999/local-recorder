@@ -5,7 +5,7 @@ export interface SegmentRequest {
 
 export interface SegmentationProgressMessage {
   type: 'progress'
-  status: 'loading-model' | 'segmenting'
+  status: 'loading-model' | 'segmenting' | 'identifying-speakers'
 }
 
 export interface SegmentationDeviceMessage {
@@ -26,9 +26,13 @@ export interface LocalSpeakerSegment {
   confidence: number
 }
 
+export interface SpeakerSegment extends LocalSpeakerSegment {
+  globalSpeakerId: number | null
+}
+
 export interface SegmentationResultMessage {
   type: 'result'
-  segments: LocalSpeakerSegment[]
+  segments: SpeakerSegment[]
 }
 
 export interface SegmentationErrorMessage {
