@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import RecordButton from '../components/recorder/RecordButton.vue'
 import RecordingTimer from '../components/recorder/RecordingTimer.vue'
 import FileDropzone from '../components/importer/FileDropzone.vue'
@@ -8,13 +8,16 @@ import ExportMenu from '../components/export/ExportMenu.vue'
 import ModelSizePicker from '../components/settings/ModelSizePicker.vue'
 import LlmModelSizePicker from '../components/settings/LlmModelSizePicker.vue'
 import SummaryEditor from '../components/summary/SummaryEditor.vue'
+import SpeakerTranscriptView from '../components/diarization/SpeakerTranscriptView.vue'
 import { useRecorder, type RecorderSource } from '../composables/useRecorder'
 import { useFileImport } from '../composables/useFileImport'
 import { useModelSelector } from '../composables/useModelSelector'
 import { useLlmModelSelector } from '../composables/useLlmModelSelector'
 import { useTranscription } from '../composables/useTranscription'
 import { useSummarizer } from '../composables/useSummarizer'
+import { useSpeakerSegmentation } from '../composables/useSpeakerSegmentation'
 import { decodeAudioFile } from '../utils/audio/decodeAudioFile'
+import { alignChunksWithSpeakers } from '../utils/speakerTranscriptAlignment'
 
 const {
   state: recorderState,
@@ -39,6 +42,27 @@ const {
 } = useTranscription()
 
 const { modelSize: llmModelSize, setModelSize: setLlmModelSize } = useLlmModelSelector()
+
+const {
+  state: diarizationState,
+  segments: diarizationSegments,
+  errorMessage: diarizationError,
+  downloadProgress: diarizationDownloadProgress,
+  segment: segmentAudio,
+  retry: retryDiarization,
+} = useSpeakerSegmentation()
+
+const speakerBlocks = computed(() =>
+  alignChunksWithSpeakers(transcriptionChunks.value, diarizationSegments.value),
+)
+
+function handleDiarize() {
+  segmentAudio(lastAudio.value!)
+}
+
+function handleDiarizeRetry() {
+  retryDiarization(lastAudio.value!)
+}
 
 const {
   state: summarizerState,
@@ -211,6 +235,41 @@ function handleRetry() {
           <button data-testid="summarize-retry-button" class="underline" @click="handleSummarizeRetry">Reintentar</button>
         </div>
         <SummaryEditor v-if="summarizerState === 'done'" v-model="editedSummary" />
+
+        <div class="flex items-center gap-2">
+          <button
+            data-testid="diarize-button"
+            class="px-4 py-2 rounded font-semibold bg-purple-600 text-white"
+            :disabled="diarizationState === 'loading-model' || diarizationState === 'segmenting' || diarizationState === 'identifying-speakers'"
+            @click="handleDiarize"
+          >
+            Identificar hablantes
+          </button>
+        </div>
+        <p v-if="diarizationState === 'loading-model'" data-testid="status-loading-model-diarization">
+          Descargando modelo de diarización…
+        </p>
+        <progress
+          v-if="diarizationDownloadProgress !== null"
+          data-testid="diarization-download-progress"
+          :value="diarizationDownloadProgress"
+          max="100"
+        />
+        <p v-if="diarizationState === 'segmenting'" data-testid="status-segmenting">
+          Segmentando audio…
+        </p>
+        <p v-if="diarizationState === 'identifying-speakers'" data-testid="status-identifying-speakers">
+          Identificando hablantes…
+        </p>
+        <div v-if="diarizationState === 'error'" data-testid="diarization-error">
+          <p class="text-red-600">{{ diarizationError ?? 'Ocurrió un error al identificar hablantes.' }}</p>
+          <button data-testid="diarize-retry-button" class="underline" @click="handleDiarizeRetry">Reintentar</button>
+        </div>
+        <SpeakerTranscriptView
+          v-if="diarizationState === 'done'"
+          data-testid="speaker-transcript-view"
+          :blocks="speakerBlocks"
+        />
       </template>
     </template>
   </main>
