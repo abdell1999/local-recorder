@@ -19,9 +19,12 @@ function post(message: SummarizerWorkerResponse) {
 async function getGenerator(modelSize: LlmModelSize) {
   if (generator && loadedModelSize === modelSize) return generator
   post({ type: 'progress', status: 'loading-model' })
-  // Heurística usada solo como pista para la UI y para el dtype — la
-  // selección real de backend la hace onnxruntime-web internamente vía
-  // device:'auto' (ver docs/superpowers/specs/2026-06-24-fix-device-auto-design.md).
+  // Heurística usada solo como pista para la UI (aviso de "modo
+  // compatibilidad") — la selección real de backend la hace
+  // onnxruntime-web internamente vía device:'auto'. El dtype se fija
+  // siempre a 'q8' (ver docs/superpowers/specs/2026-06-25-fix-summarizer-dtype-q8-design.md):
+  // en fp32 sin cuantizar, este modelo agota la memoria del runtime wasm
+  // cuando WebGPU está presente pero roto y se cae a wasm internamente.
   const device = typeof navigator !== 'undefined' && 'gpu' in navigator ? 'webgpu' : 'wasm'
   post({ type: 'device', device })
 
@@ -30,7 +33,7 @@ async function getGenerator(modelSize: LlmModelSize) {
   generator = await pipeline<'text-generation'>(
     'text-generation',
     getLlmModelRepoId(modelSize),
-    { device: 'auto', dtype: device === 'wasm' ? 'q8' : undefined, progress_callback: onProgress },
+    { device: 'auto', dtype: 'q8', progress_callback: onProgress },
   )
   loadedModelSize = modelSize
   return generator
