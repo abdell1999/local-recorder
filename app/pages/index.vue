@@ -50,6 +50,7 @@ const {
   downloadProgress: diarizationDownloadProgress,
   segment: segmentAudio,
   retry: retryDiarization,
+  reset: resetDiarization,
 } = useSpeakerSegmentation()
 
 const speakerBlocks = computed(() =>
@@ -95,6 +96,10 @@ let timerInterval: ReturnType<typeof setInterval> | null = null
 
 watch(transcriptionState, (state) => {
   if (state === 'done') editedText.value = transcriptionText.value
+})
+
+watch(transcriptionState, (state) => {
+  if (state === 'loading-model') resetDiarization()
 })
 
 async function handleRecordStart(source: RecorderSource) {

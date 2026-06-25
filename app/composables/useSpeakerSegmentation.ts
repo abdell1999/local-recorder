@@ -67,5 +67,15 @@ export function useSpeakerSegmentation(createWorker: () => MinimalSegmentationWo
     segment(audio)
   }
 
-  return { state, segments, errorMessage, device, downloadProgress, segment, retry }
+  function reset() {
+    worker?.terminate()
+    worker = null
+    state.value = 'idle'
+    segments.value = []
+    errorMessage.value = null
+    downloadProgress.value = null
+    device.value = null
+  }
+
+  return { state, segments, errorMessage, device, downloadProgress, segment, retry, reset }
 }

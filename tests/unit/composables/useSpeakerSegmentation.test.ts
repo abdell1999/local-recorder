@@ -156,4 +156,15 @@ describe('useSpeakerSegmentation', () => {
 
     expect(downloadProgress.value).toBeNull()
   })
+
+  it('reset clears state and segments', () => {
+    const worker = createFakeWorker()
+    const { state, segments, segment, reset } = useSpeakerSegmentation(() => worker)
+    segment(new Float32Array([0.1]))
+    worker.onmessage?.({ data: { type: 'result', segments: [{ windowIndex: 0, localSpeakerId: 1, start: 0, end: 2, confidence: 0.9, globalSpeakerId: 0 }] } } as MessageEvent)
+    expect(state.value).toBe('done')
+    reset()
+    expect(state.value).toBe('idle')
+    expect(segments.value).toEqual([])
+  })
 })
