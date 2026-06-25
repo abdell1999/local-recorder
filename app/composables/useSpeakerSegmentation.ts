@@ -1,7 +1,7 @@
 import { ref, shallowRef } from 'vue'
-import type { LocalSpeakerSegment, SpeakerSegmentationWorkerResponse } from '../workers/speakerSegmentation.types'
+import type { SpeakerSegment, SpeakerSegmentationWorkerResponse } from '../workers/speakerSegmentation.types'
 
-export type SpeakerSegmentationState = 'idle' | 'loading-model' | 'segmenting' | 'done' | 'error'
+export type SpeakerSegmentationState = 'idle' | 'loading-model' | 'segmenting' | 'identifying-speakers' | 'done' | 'error'
 
 export interface MinimalSegmentationWorker {
   postMessage: (message: unknown, transfer?: Transferable[]) => void
@@ -18,7 +18,7 @@ function createDefaultWorker(): MinimalSegmentationWorker {
 
 export function useSpeakerSegmentation(createWorker: () => MinimalSegmentationWorker = createDefaultWorker) {
   const state = ref<SpeakerSegmentationState>('idle')
-  const segments = shallowRef<LocalSpeakerSegment[]>([])
+  const segments = shallowRef<SpeakerSegment[]>([])
   const errorMessage = ref<string | null>(null)
   const device = ref<'webgpu' | 'wasm' | null>(null)
   const downloadProgress = ref<number | null>(null)

@@ -50,10 +50,20 @@ describe('useSpeakerSegmentation', () => {
     worker.onmessage?.({ data: { type: 'progress', status: 'segmenting' } } as MessageEvent)
     expect(state.value).toBe('segmenting')
 
-    const resultSegments = [{ windowIndex: 0, localSpeakerId: 1, start: 0, end: 2, confidence: 0.9 }]
+    const resultSegments = [{ windowIndex: 0, localSpeakerId: 1, start: 0, end: 2, confidence: 0.9, globalSpeakerId: 0 }]
     worker.onmessage?.({ data: { type: 'result', segments: resultSegments } } as MessageEvent)
     expect(state.value).toBe('done')
     expect(segments.value).toEqual(resultSegments)
+  })
+
+  it('reflects the identifying-speakers status from the worker', () => {
+    const worker = createFakeWorker()
+    const { state, segment } = useSpeakerSegmentation(() => worker)
+    segment(new Float32Array([0.1]))
+
+    worker.onmessage?.({ data: { type: 'progress', status: 'identifying-speakers' } } as MessageEvent)
+
+    expect(state.value).toBe('identifying-speakers')
   })
 
   it('reflects the chosen device when the worker reports it', () => {
