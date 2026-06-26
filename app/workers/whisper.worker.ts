@@ -1,4 +1,4 @@
-import { pipeline, WhisperTextStreamer, type AutomaticSpeechRecognitionPipeline } from '@huggingface/transformers'
+import { pipeline, WhisperTextStreamer, type AutomaticSpeechRecognitionPipeline, type WhisperTokenizer } from '@huggingface/transformers'
 import { getModelRepoId, type WhisperModelSize } from '../utils/whisperModels'
 import type { WhisperWorkerRequest, WhisperWorkerResponse, WhisperChunk } from './whisper.types'
 import { filterNonSpeechChunks, deriveText } from '../utils/transcriptClean'
@@ -53,9 +53,8 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
     post({ type: 'transcription-start', audioDuration: audioDurationSeconds, totalChunks })
 
     let segmentsDone = 0
-    const streamer = new WhisperTextStreamer((asr as any).tokenizer, {
+    const streamer = new WhisperTextStreamer(asr.tokenizer as unknown as WhisperTokenizer, {
       skip_prompt: true,
-      callback_function: () => {},
       on_chunk_end: () => {
         segmentsDone = Math.min(segmentsDone + 1, totalSegments - 1)
         post({ type: 'chunk-progress', done: segmentsDone, total: totalSegments })
