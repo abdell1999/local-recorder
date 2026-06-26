@@ -19,6 +19,6 @@ function onChange(event: Event) {
     :disabled="disabled"
     @change="onChange"
   >
-    <option v-for="size in sizes" :key="size" :value="size">{{ size }}</option>
+    <option v-for="size in sizes" :key="size" :value="size">{{ WHISPER_MODELS[size] }}</option>
   </select>
 </template>
