@@ -21,6 +21,7 @@ import { useSummarizer } from '../composables/useSummarizer'
 import { useSpeakerSegmentation } from '../composables/useSpeakerSegmentation'
 import { decodeAudioFile } from '../utils/audio/decodeAudioFile'
 import { alignChunksWithSpeakers } from '../utils/speakerTranscriptAlignment'
+import { formatElapsed } from '../utils/formatElapsed'
 
 const {
   state: recorderState,
@@ -42,6 +43,10 @@ const {
   errorMessage: transcriptionError,
   device: transcriptionDevice,
   downloadProgress,
+  elapsedSeconds: transcriptionElapsed,
+  eta: transcriptionEta,
+  transcriptionDuration,
+  chunkProgress,
   transcribe,
   retry,
 } = useTranscription()
@@ -245,8 +250,15 @@ function handleRetry() {
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
           </svg>
-          Transcribiendo…
+          Transcribiendo… {{ formatElapsed(transcriptionElapsed) }}<span v-if="transcriptionEta !== null"> · ETA ~{{ formatElapsed(transcriptionEta) }}</span>
         </p>
+        <div v-if="chunkProgress !== null" class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+          <div
+            data-testid="chunk-progress"
+            class="bg-indigo-500 h-1.5 rounded-full transition-all"
+            :style="{ width: `${(chunkProgress.done / chunkProgress.total) * 100}%` }"
+          />
+        </div>
         <div v-if="transcriptionState === 'error'" data-testid="transcription-error" class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
           <p>{{ transcriptionError ?? 'Ocurrió un error al transcribir.' }}</p>
           <button data-testid="retry-button" class="underline hover:no-underline" @click="handleRetry">Reintentar</button>
@@ -262,9 +274,18 @@ function handleRetry() {
           <!-- Transcripción -->
           <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm space-y-3">
             <div class="flex items-center justify-between">
-              <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                Transcripción
-              </h2>
+              <div class="flex items-center gap-3">
+                <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Transcripción
+                </h2>
+                <span
+                  v-if="transcriptionDuration !== null"
+                  data-testid="transcription-duration"
+                  class="text-xs text-gray-400 dark:text-gray-500"
+                >
+                  Completado en {{ formatElapsed(transcriptionDuration) }}
+                </span>
+              </div>
               <ExportMenu
                 :result="{ text: editedText, chunks: transcriptionChunks }"
                 :segments="diarizationState === 'done' ? diarizationSegments : undefined"

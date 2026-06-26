@@ -18,6 +18,10 @@ const transcriptionChunks = ref<{ text: string; timestamp: [number, number | nul
 const transcriptionError = ref<string | null>(null)
 const transcriptionDevice = ref<'webgpu' | 'wasm' | null>(null)
 const downloadProgress = ref<number | null>(null)
+const transcriptionElapsed = ref(0)
+const transcriptionEta = ref<number | null>(null)
+const transcriptionDurationRef = ref<number | null>(null)
+const chunkProgressRef = ref<{ done: number; total: number } | null>(null)
 
 vi.mock('../../../app/composables/useRecorder', () => ({
   useRecorder: () => ({ state: recorderState, errorMessage: recorderError, start: startRecording, stop: stopRecording }),
@@ -61,6 +65,10 @@ vi.mock('../../../app/composables/useTranscription', () => ({
     errorMessage: transcriptionError,
     device: transcriptionDevice,
     downloadProgress,
+    elapsedSeconds: transcriptionElapsed,
+    eta: transcriptionEta,
+    transcriptionDuration: transcriptionDurationRef,
+    chunkProgress: chunkProgressRef,
     transcribe,
     retry,
   }),
@@ -105,6 +113,10 @@ beforeEach(() => {
   summarizerError.value = null
   summaryDownloadProgress.value = null
   summary.value = ''
+  transcriptionElapsed.value = 0
+  transcriptionEta.value = null
+  transcriptionDurationRef.value = null
+  chunkProgressRef.value = null
 })
 
 describe('index page', () => {
@@ -316,5 +328,63 @@ describe('index page', () => {
     expect(wrapper.get('[data-testid="summarize-error"]').text()).toContain('boom')
     await wrapper.get('[data-testid="summarize-retry-button"]').trigger('click')
     expect(retrySummarize).toHaveBeenCalledWith('texto reconocido', '0.5b')
+  })
+
+  it('shows elapsed time in transcribing status', async () => {
+    const wrapper = mountPage()
+    transcriptionElapsed.value = 42
+    transcriptionState.value = 'transcribing'
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[data-testid="status-transcribing"]').text()).toContain('00:42')
+  })
+
+  it('shows ETA when available during transcription', async () => {
+    const wrapper = mountPage()
+    transcriptionState.value = 'transcribing'
+    transcriptionElapsed.value = 10
+    transcriptionEta.value = 30
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[data-testid="status-transcribing"]').text()).toContain('00:30')
+  })
+
+  it('shows chunk progress bar when chunkProgress is set', async () => {
+    const wrapper = mountPage()
+    transcriptionState.value = 'transcribing'
+    chunkProgressRef.value = { done: 3, total: 8 }
+    await wrapper.vm.$nextTick()
+
+    const bar = wrapper.get('[data-testid="chunk-progress"]')
+    expect(bar.element.getAttribute('style')).toContain('37.5%')
+  })
+
+  it('hides chunk progress bar when chunkProgress is null', async () => {
+    const wrapper = mountPage()
+    transcriptionState.value = 'transcribing'
+    chunkProgressRef.value = null
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="chunk-progress"]').exists()).toBe(false)
+  })
+
+  it('shows duration badge after transcription completes', async () => {
+    transcriptionText.value = 'texto reconocido'
+    const wrapper = mountPage()
+    transcriptionState.value = 'done'
+    transcriptionDurationRef.value = 83
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.get('[data-testid="transcription-duration"]').text()).toContain('01:23')
+  })
+
+  it('hides duration badge when transcriptionDuration is null', async () => {
+    transcriptionText.value = 'texto reconocido'
+    const wrapper = mountPage()
+    transcriptionState.value = 'done'
+    transcriptionDurationRef.value = null
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.find('[data-testid="transcription-duration"]').exists()).toBe(false)
   })
 })
