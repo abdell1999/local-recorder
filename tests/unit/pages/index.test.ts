@@ -123,7 +123,7 @@ describe('index page', () => {
     await Promise.resolve()
 
     expect(importFile).toHaveBeenCalled()
-    expect(transcribe).toHaveBeenCalledWith(pcm, 'small')
+    expect(transcribe).toHaveBeenCalledWith(pcm, 'small', 'auto')
   })
 
   it('retries transcription with the last imported audio when the retry button is clicked', async () => {
@@ -139,7 +139,7 @@ describe('index page', () => {
     await wrapper.vm.$nextTick()
     await wrapper.get('[data-testid="retry-button"]').trigger('click')
 
-    expect(retry).toHaveBeenCalledWith(pcm, 'small')
+    expect(retry).toHaveBeenCalledWith(pcm, 'small', 'auto')
   })
 
   it('populates the editor with the transcribed text once done', async () => {

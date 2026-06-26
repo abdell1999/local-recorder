@@ -6,12 +6,14 @@ import FileDropzone from '../components/importer/FileDropzone.vue'
 import TranscriptEditor from '../components/transcript/TranscriptEditor.vue'
 import ExportMenu from '../components/export/ExportMenu.vue'
 import ModelSizePicker from '../components/settings/ModelSizePicker.vue'
+import LanguagePicker from '../components/settings/LanguagePicker.vue'
 import LlmModelSizePicker from '../components/settings/LlmModelSizePicker.vue'
 import SummaryEditor from '../components/summary/SummaryEditor.vue'
 import SpeakerTranscriptView from '../components/diarization/SpeakerTranscriptView.vue'
 import { useRecorder, type RecorderSource } from '../composables/useRecorder'
 import { useFileImport } from '../composables/useFileImport'
 import { useModelSelector } from '../composables/useModelSelector'
+import { useLanguageSelector } from '../composables/useLanguageSelector'
 import { useLlmModelSelector } from '../composables/useLlmModelSelector'
 import { useTranscription } from '../composables/useTranscription'
 import { useSummarizer } from '../composables/useSummarizer'
@@ -29,6 +31,8 @@ const {
 const { errorMessage: importError, importFile } = useFileImport()
 
 const { modelSize, setModelSize } = useModelSelector()
+
+const { language, setLanguage } = useLanguageSelector()
 
 const {
   state: transcriptionState,
@@ -117,7 +121,7 @@ async function handleRecordStop() {
   const arrayBuffer = await blob.arrayBuffer()
   const pcm = await decodeAudioFile(arrayBuffer)
   lastAudio.value = pcm
-  transcribe(pcm, modelSize.value)
+  transcribe(pcm, modelSize.value, language.value)
 }
 
 async function handleFileSelected(file: File) {
@@ -125,7 +129,7 @@ async function handleFileSelected(file: File) {
   const pcm = await importFile(file)
   if (pcm) {
     lastAudio.value = pcm
-    transcribe(pcm, modelSize.value)
+    transcribe(pcm, modelSize.value, language.value)
   }
 }
 
@@ -134,7 +138,7 @@ function handleFileRejected(reason: string) {
 }
 
 function handleRetry() {
-  if (lastAudio.value) retry(lastAudio.value, modelSize.value)
+  if (lastAudio.value) retry(lastAudio.value, modelSize.value, language.value)
 }
 </script>
 
@@ -142,12 +146,18 @@ function handleRetry() {
   <main class="max-w-2xl mx-auto p-6 space-y-6">
     <h1 class="text-2xl font-bold">Local Recorder</h1>
 
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-2 flex-wrap">
       <span class="text-sm text-gray-600">Modelo:</span>
       <ModelSizePicker
         :model-value="modelSize"
         :disabled="transcriptionState === 'loading-model' || transcriptionState === 'transcribing'"
         @update:model-value="setModelSize"
+      />
+      <span class="text-sm text-gray-600">Idioma:</span>
+      <LanguagePicker
+        :model-value="language"
+        :disabled="transcriptionState === 'loading-model' || transcriptionState === 'transcribing'"
+        @update:model-value="setLanguage"
       />
     </div>
 
