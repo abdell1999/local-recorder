@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { useTranscription, type MinimalWorker } from '../../../app/composables/useTranscription'
 
 function createFakeWorker() {
@@ -157,5 +157,121 @@ describe('useTranscription', () => {
     worker.onmessage?.({ data: { type: 'error', message: 'boom' } } as MessageEvent)
 
     expect(downloadProgress.value).toBeNull()
+  })
+
+  describe('timing', () => {
+    beforeEach(() => { vi.useFakeTimers() })
+    afterEach(() => { vi.useRealTimers() })
+
+    it('starts elapsed timer when transcription-start message arrives', () => {
+      const worker = createFakeWorker()
+      const { elapsedSeconds, transcribe } = useTranscription(() => worker)
+      transcribe(new Float32Array([0.1]), 'small')
+
+      worker.onmessage?.({ data: { type: 'transcription-start', audioDuration: 60, totalChunks: 3 } } as MessageEvent)
+      vi.advanceTimersByTime(5000)
+
+      expect(elapsedSeconds.value).toBe(5)
+    })
+
+    it('computes ETA from chunk-progress when elapsed > 0', () => {
+      const worker = createFakeWorker()
+      const { eta, transcribe } = useTranscription(() => worker)
+      transcribe(new Float32Array([0.1]), 'small')
+
+      worker.onmessage?.({ data: { type: 'transcription-start', audioDuration: 60, totalChunks: 3 } } as MessageEvent)
+      vi.advanceTimersByTime(10000)
+
+      worker.onmessage?.({ data: { type: 'chunk-progress', done: 2, total: 8 } } as MessageEvent)
+      // 10s elapsed, 2/8 done → 5s per segment, 6 remaining → ETA = 30s
+      expect(eta.value).toBe(30)
+    })
+
+    it('stores chunkProgress when chunk-progress message arrives', () => {
+      const worker = createFakeWorker()
+      const { chunkProgress, transcribe } = useTranscription(() => worker)
+      transcribe(new Float32Array([0.1]), 'small')
+
+      worker.onmessage?.({ data: { type: 'transcription-start', audioDuration: 10, totalChunks: 1 } } as MessageEvent)
+      worker.onmessage?.({ data: { type: 'chunk-progress', done: 3, total: 8 } } as MessageEvent)
+
+      expect(chunkProgress.value).toEqual({ done: 3, total: 8 })
+    })
+
+    it('saves transcriptionDuration and stops timer when result arrives', () => {
+      const worker = createFakeWorker()
+      const { transcriptionDuration, elapsedSeconds, transcribe } = useTranscription(() => worker)
+      transcribe(new Float32Array([0.1]), 'small')
+
+      worker.onmessage?.({ data: { type: 'transcription-start', audioDuration: 60, totalChunks: 3 } } as MessageEvent)
+      vi.advanceTimersByTime(45000)
+
+      worker.onmessage?.({ data: { type: 'result', text: 'hola', chunks: [] } } as MessageEvent)
+      expect(transcriptionDuration.value).toBe(45)
+
+      // Timer should be stopped — advancing time no longer increments elapsed
+      vi.advanceTimersByTime(5000)
+      expect(elapsedSeconds.value).toBe(45)
+    })
+
+    it('stops timer and clears eta/chunkProgress on result', () => {
+      const worker = createFakeWorker()
+      const { eta, chunkProgress, transcribe } = useTranscription(() => worker)
+      transcribe(new Float32Array([0.1]), 'small')
+
+      worker.onmessage?.({ data: { type: 'transcription-start', audioDuration: 30, totalChunks: 2 } } as MessageEvent)
+      vi.advanceTimersByTime(5000)
+      worker.onmessage?.({ data: { type: 'chunk-progress', done: 2, total: 8 } } as MessageEvent)
+      expect(eta.value).not.toBeNull()
+      expect(chunkProgress.value).not.toBeNull()
+
+      worker.onmessage?.({ data: { type: 'result', text: 'ok', chunks: [] } } as MessageEvent)
+      expect(eta.value).toBeNull()
+      expect(chunkProgress.value).toBeNull()
+    })
+
+    it('stops timer on worker error', () => {
+      const worker = createFakeWorker()
+      const { elapsedSeconds, transcribe } = useTranscription(() => worker)
+      transcribe(new Float32Array([0.1]), 'small')
+
+      worker.onmessage?.({ data: { type: 'transcription-start', audioDuration: 60, totalChunks: 3 } } as MessageEvent)
+      vi.advanceTimersByTime(10000)
+
+      worker.onmessage?.({ data: { type: 'error', message: 'boom' } } as MessageEvent)
+      vi.advanceTimersByTime(5000)
+      expect(elapsedSeconds.value).toBe(10)
+    })
+
+    it('stops timer on worker crash', () => {
+      const worker = createFakeWorker()
+      const { elapsedSeconds, transcribe } = useTranscription(() => worker)
+      transcribe(new Float32Array([0.1]), 'small')
+
+      worker.onmessage?.({ data: { type: 'transcription-start', audioDuration: 60, totalChunks: 3 } } as MessageEvent)
+      vi.advanceTimersByTime(8000)
+
+      worker.onerror?.(new Event('error') as ErrorEvent)
+      vi.advanceTimersByTime(5000)
+      expect(elapsedSeconds.value).toBe(8)
+    })
+
+    it('resets timing state when a new transcription starts', () => {
+      const worker = createFakeWorker()
+      const { elapsedSeconds, eta, transcriptionDuration, chunkProgress, transcribe } = useTranscription(() => worker)
+      transcribe(new Float32Array([0.1]), 'small')
+
+      worker.onmessage?.({ data: { type: 'transcription-start', audioDuration: 10, totalChunks: 1 } } as MessageEvent)
+      vi.advanceTimersByTime(5000)
+      worker.onmessage?.({ data: { type: 'chunk-progress', done: 2, total: 8 } } as MessageEvent)
+      worker.onmessage?.({ data: { type: 'result', text: 'hi', chunks: [] } } as MessageEvent)
+      expect(transcriptionDuration.value).toBe(5)
+
+      transcribe(new Float32Array([0.1]), 'small')
+      expect(elapsedSeconds.value).toBe(0)
+      expect(eta.value).toBeNull()
+      expect(transcriptionDuration.value).toBeNull()
+      expect(chunkProgress.value).toBeNull()
+    })
   })
 })

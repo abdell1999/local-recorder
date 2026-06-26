@@ -24,7 +24,19 @@ export function useTranscription(createWorker: () => MinimalWorker = createDefau
   const errorMessage = ref<string | null>(null)
   const device = ref<'webgpu' | 'wasm' | null>(null)
   const downloadProgress = ref<number | null>(null)
+  const elapsedSeconds = ref<number>(0)
+  const eta = ref<number | null>(null)
+  const transcriptionDuration = ref<number | null>(null)
+  const chunkProgress = ref<{ done: number; total: number } | null>(null)
   let worker: MinimalWorker | null = null
+  let timerHandle: ReturnType<typeof setInterval> | null = null
+
+  function stopTimer() {
+    if (timerHandle !== null) {
+      clearInterval(timerHandle)
+      timerHandle = null
+    }
+  }
 
   function ensureWorker(): MinimalWorker {
     if (worker) return worker
@@ -38,18 +50,32 @@ export function useTranscription(createWorker: () => MinimalWorker = createDefau
         downloadProgress.value = message.percent
       } else if (message.type === 'device') {
         device.value = message.device
+      } else if (message.type === 'transcription-start') {
+        timerHandle = setInterval(() => { elapsedSeconds.value++ }, 1000)
+      } else if (message.type === 'chunk-progress') {
+        chunkProgress.value = { done: message.done, total: message.total }
+        if (message.done > 0 && elapsedSeconds.value > 0) {
+          const secondsPerSegment = elapsedSeconds.value / message.done
+          eta.value = Math.round(secondsPerSegment * (message.total - message.done))
+        }
       } else if (message.type === 'result') {
+        stopTimer()
+        transcriptionDuration.value = elapsedSeconds.value
         text.value = message.text
         chunks.value = message.chunks
         state.value = 'done'
         downloadProgress.value = null
+        eta.value = null
+        chunkProgress.value = null
       } else if (message.type === 'error') {
+        stopTimer()
         state.value = 'error'
         errorMessage.value = message.message
         downloadProgress.value = null
       }
     }
     worker.onerror = () => {
+      stopTimer()
       state.value = 'error'
       errorMessage.value = 'worker-crashed'
       downloadProgress.value = null
@@ -58,6 +84,11 @@ export function useTranscription(createWorker: () => MinimalWorker = createDefau
   }
 
   function transcribe(audio: Float32Array, modelSize: WhisperModelSize, language = 'auto') {
+    stopTimer()
+    elapsedSeconds.value = 0
+    eta.value = null
+    transcriptionDuration.value = null
+    chunkProgress.value = null
     errorMessage.value = null
     state.value = 'loading-model'
     const transferable = audio.slice()
@@ -73,5 +104,18 @@ export function useTranscription(createWorker: () => MinimalWorker = createDefau
     transcribe(audio, modelSize, language)
   }
 
-  return { state, text, chunks, errorMessage, device, downloadProgress, transcribe, retry }
+  return {
+    state,
+    text,
+    chunks,
+    errorMessage,
+    device,
+    downloadProgress,
+    elapsedSeconds,
+    eta,
+    transcriptionDuration,
+    chunkProgress,
+    transcribe,
+    retry,
+  }
 }
