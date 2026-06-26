@@ -9,7 +9,7 @@ const emit = defineEmits<{ start: [] }>()
   <button
     v-if="state !== 'recording'"
     :data-testid="`record-button-${source}`"
-    class="px-4 py-2 rounded font-semibold bg-blue-600 text-white"
+    class="px-4 py-2 rounded-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
     @click="emit('start')"
   >
     {{ label }}

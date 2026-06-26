@@ -24,11 +24,18 @@ defineExpose({ onDrop })
 </script>
 
 <template>
-  <div data-testid="file-dropzone" class="border-2 border-dashed rounded p-6 text-center" @dragover.prevent @drop="onDrop">
-    <p>Arrastra un archivo de audio o vídeo, o</p>
-    <label class="text-blue-600 underline cursor-pointer">
-      selecciona uno
-      <input type="file" accept="audio/*,video/*" class="hidden" data-testid="file-input" @change="onChange" />
-    </label>
+  <div
+    data-testid="file-dropzone"
+    class="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-8 text-center bg-gray-50 dark:bg-gray-800/50 hover:border-indigo-400 dark:hover:border-indigo-500 transition-colors cursor-pointer"
+    @dragover.prevent
+    @drop="onDrop"
+  >
+    <p class="text-sm text-gray-500 dark:text-gray-400">
+      Arrastra un archivo de audio o vídeo, o
+      <label class="text-indigo-600 dark:text-indigo-400 underline cursor-pointer hover:text-indigo-700 dark:hover:text-indigo-300">
+        selecciona uno
+        <input type="file" accept="audio/*,video/*" class="hidden" data-testid="file-input" @change="onChange" />
+      </label>
+    </p>
   </div>
 </template>
