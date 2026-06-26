@@ -10,6 +10,7 @@ import LanguagePicker from '../components/settings/LanguagePicker.vue'
 import LlmModelSizePicker from '../components/settings/LlmModelSizePicker.vue'
 import SummaryEditor from '../components/summary/SummaryEditor.vue'
 import SpeakerTranscriptView from '../components/diarization/SpeakerTranscriptView.vue'
+import ThemeToggle from '../components/settings/ThemeToggle.vue'
 import { useRecorder, type RecorderSource } from '../composables/useRecorder'
 import { useFileImport } from '../composables/useFileImport'
 import { useModelSelector } from '../composables/useModelSelector'
@@ -143,152 +144,240 @@ function handleRetry() {
 </script>
 
 <template>
-  <main class="max-w-2xl mx-auto p-6 space-y-6">
-    <h1 class="text-2xl font-bold">Local Recorder</h1>
+  <div class="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+    <main class="max-w-3xl mx-auto px-4 py-8 space-y-4">
 
-    <div class="flex items-center gap-2 flex-wrap">
-      <span class="text-sm text-gray-600">Modelo:</span>
-      <ModelSizePicker
-        :model-value="modelSize"
-        :disabled="transcriptionState === 'loading-model' || transcriptionState === 'transcribing'"
-        @update:model-value="setModelSize"
-      />
-      <span class="text-sm text-gray-600">Idioma:</span>
-      <LanguagePicker
-        :model-value="language"
-        :disabled="transcriptionState === 'loading-model' || transcriptionState === 'transcribing'"
-        @update:model-value="setLanguage"
-      />
-    </div>
+      <!-- Header -->
+      <div class="flex items-center justify-between">
+        <h1 class="text-2xl font-bold tracking-tight">Local Recorder</h1>
+        <ThemeToggle />
+      </div>
 
-    <section class="flex items-center gap-4">
-      <RecordButton
-        source="microphone"
-        label="Grabar micrófono"
-        :state="recorderState"
-        @start="handleRecordStart('microphone')"
-      />
-      <RecordButton
-        source="tab"
-        label="Grabar pestaña"
-        :state="recorderState"
-        @start="handleRecordStart('tab')"
-      />
-      <button
-        v-if="recorderState === 'recording'"
-        data-testid="stop-button"
-        class="px-4 py-2 rounded font-semibold bg-red-600 text-white"
-        @click="handleRecordStop"
-      >
-        Detener
-      </button>
-      <RecordingTimer v-if="recorderState === 'recording'" :seconds="elapsedSeconds" />
-    </section>
-    <p v-if="recorderError === 'mic-permission-denied'" data-testid="recorder-error" class="text-red-600">
-      No se pudo acceder al micrófono. Revisa los permisos del navegador.
-    </p>
-    <p v-if="recorderError === 'tab-permission-denied'" data-testid="tab-permission-error" class="text-red-600">
-      No se concedió permiso para compartir la pestaña.
-    </p>
-    <p v-if="recorderError === 'tab-audio-not-shared'" data-testid="tab-audio-error" class="text-red-600">
-      No se compartió audio. Vuelve a intentarlo y marca "Compartir audio de la pestaña".
-    </p>
+      <!-- Configuración -->
+      <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm">
+        <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
+          Configuración
+        </h2>
+        <div class="flex items-center gap-4 flex-wrap">
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-600 dark:text-gray-400">Modelo:</span>
+            <ModelSizePicker
+              :model-value="modelSize"
+              :disabled="transcriptionState === 'loading-model' || transcriptionState === 'transcribing'"
+              @update:model-value="setModelSize"
+            />
+          </div>
+          <div class="flex items-center gap-2">
+            <span class="text-sm text-gray-600 dark:text-gray-400">Idioma:</span>
+            <LanguagePicker
+              :model-value="language"
+              :disabled="transcriptionState === 'loading-model' || transcriptionState === 'transcribing'"
+              @update:model-value="setLanguage"
+            />
+          </div>
+        </div>
+      </section>
 
-    <FileDropzone @file-selected="handleFileSelected" @rejected="handleFileRejected" />
-    <p v-if="importRejectedReason || importError" data-testid="import-error" class="text-red-600">
-      Formato de archivo no soportado. Prueba con mp3, wav, m4a, mp4 o webm.
-    </p>
-
-    <p v-if="transcriptionDevice === 'wasm'" data-testid="wasm-fallback-notice">
-      Tu navegador no soporta WebGPU: usando modo compatibilidad (más lento).
-    </p>
-    <p v-if="transcriptionState === 'loading-model'" data-testid="status-loading-model">Descargando modelo de transcripción…</p>
-    <progress
-      v-if="downloadProgress !== null"
-      data-testid="model-download-progress"
-      :value="downloadProgress"
-      max="100"
-    />
-    <p v-if="transcriptionState === 'transcribing'" data-testid="status-transcribing">Transcribiendo…</p>
-    <div v-if="transcriptionState === 'error'" data-testid="transcription-error">
-      <p class="text-red-600">{{ transcriptionError ?? 'Ocurrió un error al transcribir.' }}</p>
-      <button data-testid="retry-button" class="underline" @click="handleRetry">Reintentar</button>
-    </div>
-
-    <template v-if="transcriptionState === 'done'">
-      <p v-if="editedText.trim() === ''" data-testid="no-speech-detected">No se detectó voz en el audio.</p>
-      <template v-else>
-        <TranscriptEditor v-model="editedText" />
-        <ExportMenu
-          :result="{ text: editedText, chunks: transcriptionChunks }"
-          :segments="diarizationState === 'done' ? diarizationSegments : undefined"
-        />
-
-        <div class="flex items-center gap-2">
-          <span class="text-sm text-gray-600">Modelo de resumen:</span>
-          <LlmModelSizePicker
-            :model-value="llmModelSize"
-            :disabled="summarizerState === 'loading-model' || summarizerState === 'summarizing'"
-            @update:model-value="setLlmModelSize"
+      <!-- Captura -->
+      <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm space-y-4">
+        <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+          Captura
+        </h2>
+        <div class="flex items-center gap-3 flex-wrap">
+          <RecordButton
+            source="microphone"
+            label="Grabar micrófono"
+            :state="recorderState"
+            @start="handleRecordStart('microphone')"
+          />
+          <RecordButton
+            source="tab"
+            label="Grabar pestaña"
+            :state="recorderState"
+            @start="handleRecordStart('tab')"
           />
           <button
-            data-testid="summarize-button"
-            class="px-4 py-2 rounded font-semibold bg-blue-600 text-white"
-            :disabled="summarizerState === 'loading-model' || summarizerState === 'summarizing'"
-            @click="handleSummarize"
+            v-if="recorderState === 'recording'"
+            data-testid="stop-button"
+            class="px-4 py-2 rounded-lg font-semibold bg-red-600 hover:bg-red-700 text-white transition-colors focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
+            @click="handleRecordStop"
           >
-            Resumir
+            Detener
           </button>
+          <RecordingTimer v-if="recorderState === 'recording'" :seconds="elapsedSeconds" />
         </div>
-        <p v-if="summarizerState === 'loading-model'" data-testid="status-loading-model-llm">Descargando modelo de resumen…</p>
-        <progress
-          v-if="summaryDownloadProgress !== null"
-          data-testid="llm-download-progress"
-          :value="summaryDownloadProgress"
-          max="100"
-        />
-        <p v-if="summarizerState === 'summarizing'" data-testid="status-summarizing-llm">Generando resumen…</p>
-        <div v-if="summarizerState === 'error'" data-testid="summarize-error">
-          <p class="text-red-600">{{ summarizerError ?? 'Ocurrió un error al generar el resumen.' }}</p>
-          <button data-testid="summarize-retry-button" class="underline" @click="handleSummarizeRetry">Reintentar</button>
-        </div>
-        <SummaryEditor v-if="summarizerState === 'done'" v-model="editedSummary" />
+        <p v-if="recorderError === 'mic-permission-denied'" data-testid="recorder-error" class="text-sm text-red-600 dark:text-red-400">
+          No se pudo acceder al micrófono. Revisa los permisos del navegador.
+        </p>
+        <p v-if="recorderError === 'tab-permission-denied'" data-testid="tab-permission-error" class="text-sm text-red-600 dark:text-red-400">
+          No se concedió permiso para compartir la pestaña.
+        </p>
+        <p v-if="recorderError === 'tab-audio-not-shared'" data-testid="tab-audio-error" class="text-sm text-red-600 dark:text-red-400">
+          No se compartió audio. Vuelve a intentarlo y marca "Compartir audio de la pestaña".
+        </p>
+        <FileDropzone @file-selected="handleFileSelected" @rejected="handleFileRejected" />
+        <p v-if="importRejectedReason || importError" data-testid="import-error" class="text-sm text-red-600 dark:text-red-400">
+          Formato de archivo no soportado. Prueba con mp3, wav, m4a, mp4 o webm.
+        </p>
+      </section>
 
-        <div class="flex items-center gap-2">
-          <button
-            data-testid="diarize-button"
-            class="px-4 py-2 rounded font-semibold bg-purple-600 text-white"
-            :disabled="diarizationState === 'loading-model' || diarizationState === 'segmenting' || diarizationState === 'identifying-speakers'"
-            @click="handleDiarize"
-          >
-            Identificar hablantes
-          </button>
+      <!-- Estado de transcripción -->
+      <div class="space-y-2 px-1">
+        <p v-if="transcriptionDevice === 'wasm'" data-testid="wasm-fallback-notice" class="text-sm text-amber-600 dark:text-amber-400">
+          Tu navegador no soporta WebGPU: usando modo compatibilidad (más lento).
+        </p>
+        <p v-if="transcriptionState === 'loading-model'" data-testid="status-loading-model" class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+          <svg class="animate-spin h-4 w-4 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
+          Descargando modelo de transcripción…
+        </p>
+        <div v-if="downloadProgress !== null" class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+          <div
+            data-testid="model-download-progress"
+            class="bg-indigo-500 h-1.5 rounded-full transition-all"
+            :style="{ width: `${downloadProgress}%` }"
+          />
         </div>
-        <p v-if="diarizationState === 'loading-model'" data-testid="status-loading-model-diarization">
-          Descargando modelo de diarización…
+        <p v-if="transcriptionState === 'transcribing'" data-testid="status-transcribing" class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+          <svg class="animate-spin h-4 w-4 text-indigo-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+          </svg>
+          Transcribiendo…
         </p>
-        <progress
-          v-if="diarizationDownloadProgress !== null"
-          data-testid="diarization-download-progress"
-          :value="diarizationDownloadProgress"
-          max="100"
-        />
-        <p v-if="diarizationState === 'segmenting'" data-testid="status-segmenting">
-          Segmentando audio…
-        </p>
-        <p v-if="diarizationState === 'identifying-speakers'" data-testid="status-identifying-speakers">
-          Identificando hablantes…
-        </p>
-        <div v-if="diarizationState === 'error'" data-testid="diarization-error">
-          <p class="text-red-600">{{ diarizationError ?? 'Ocurrió un error al identificar hablantes.' }}</p>
-          <button data-testid="diarize-retry-button" class="underline" @click="handleDiarizeRetry">Reintentar</button>
+        <div v-if="transcriptionState === 'error'" data-testid="transcription-error" class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+          <p>{{ transcriptionError ?? 'Ocurrió un error al transcribir.' }}</p>
+          <button data-testid="retry-button" class="underline hover:no-underline" @click="handleRetry">Reintentar</button>
         </div>
-        <SpeakerTranscriptView
-          v-if="diarizationState === 'done'"
-          data-testid="speaker-transcript-view"
-          :blocks="speakerBlocks"
-        />
+      </div>
+
+      <template v-if="transcriptionState === 'done'">
+        <p v-if="editedText.trim() === ''" data-testid="no-speech-detected" class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+          No se detectó voz en el audio.
+        </p>
+        <template v-else>
+
+          <!-- Transcripción -->
+          <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm space-y-3">
+            <div class="flex items-center justify-between">
+              <h2 class="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                Transcripción
+              </h2>
+              <ExportMenu
+                :result="{ text: editedText, chunks: transcriptionChunks }"
+                :segments="diarizationState === 'done' ? diarizationSegments : undefined"
+              />
+            </div>
+            <TranscriptEditor v-model="editedText" />
+          </section>
+
+          <!-- Acciones -->
+          <section class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-4 shadow-sm space-y-4">
+
+            <!-- Resumir -->
+            <div class="space-y-3">
+              <div class="flex items-center gap-3 flex-wrap">
+                <button
+                  data-testid="summarize-button"
+                  class="px-4 py-2 rounded-lg font-semibold bg-blue-600 hover:bg-blue-700 text-white transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  :disabled="summarizerState === 'loading-model' || summarizerState === 'summarizing'"
+                  @click="handleSummarize"
+                >
+                  Resumir
+                </button>
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">Modelo:</span>
+                  <LlmModelSizePicker
+                    :model-value="llmModelSize"
+                    :disabled="summarizerState === 'loading-model' || summarizerState === 'summarizing'"
+                    @update:model-value="setLlmModelSize"
+                  />
+                </div>
+              </div>
+              <p v-if="summarizerState === 'loading-model'" data-testid="status-loading-model-llm" class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Descargando modelo de resumen…
+              </p>
+              <div v-if="summaryDownloadProgress !== null" class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                <div
+                  data-testid="llm-download-progress"
+                  class="bg-blue-500 h-1.5 rounded-full transition-all"
+                  :style="{ width: `${summaryDownloadProgress}%` }"
+                />
+              </div>
+              <p v-if="summarizerState === 'summarizing'" data-testid="status-summarizing-llm" class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Generando resumen…
+              </p>
+              <div v-if="summarizerState === 'error'" data-testid="summarize-error" class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                <p>{{ summarizerError ?? 'Ocurrió un error al generar el resumen.' }}</p>
+                <button data-testid="summarize-retry-button" class="underline hover:no-underline" @click="handleSummarizeRetry">Reintentar</button>
+              </div>
+              <SummaryEditor v-if="summarizerState === 'done'" v-model="editedSummary" />
+            </div>
+
+            <!-- Diarizar -->
+            <div class="border-t border-gray-200 dark:border-gray-700 pt-4 space-y-3">
+              <button
+                data-testid="diarize-button"
+                class="px-4 py-2 rounded-lg font-semibold bg-purple-600 hover:bg-purple-700 text-white transition-colors focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                :disabled="diarizationState === 'loading-model' || diarizationState === 'segmenting' || diarizationState === 'identifying-speakers'"
+                @click="handleDiarize"
+              >
+                Identificar hablantes
+              </button>
+              <p v-if="diarizationState === 'loading-model'" data-testid="status-loading-model-diarization" class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Descargando modelo de diarización…
+              </p>
+              <div v-if="diarizationDownloadProgress !== null" class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                <div
+                  data-testid="diarization-download-progress"
+                  class="bg-purple-500 h-1.5 rounded-full transition-all"
+                  :style="{ width: `${diarizationDownloadProgress}%` }"
+                />
+              </div>
+              <p v-if="diarizationState === 'segmenting'" data-testid="status-segmenting" class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Segmentando audio…
+              </p>
+              <p v-if="diarizationState === 'identifying-speakers'" data-testid="status-identifying-speakers" class="text-sm text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                <svg class="animate-spin h-4 w-4 text-purple-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
+                </svg>
+                Identificando hablantes…
+              </p>
+              <div v-if="diarizationState === 'error'" data-testid="diarization-error" class="text-sm text-red-600 dark:text-red-400 flex items-center gap-2">
+                <p>{{ diarizationError ?? 'Ocurrió un error al identificar hablantes.' }}</p>
+                <button data-testid="diarize-retry-button" class="underline hover:no-underline" @click="handleDiarizeRetry">Reintentar</button>
+              </div>
+              <SpeakerTranscriptView
+                v-if="diarizationState === 'done'"
+                data-testid="speaker-transcript-view"
+                :blocks="speakerBlocks"
+              />
+            </div>
+
+          </section>
+
+        </template>
       </template>
-    </template>
-  </main>
+
+    </main>
+  </div>
 </template>

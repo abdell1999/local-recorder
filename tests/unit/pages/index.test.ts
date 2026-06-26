@@ -86,6 +86,7 @@ function mountPage() {
         ModelSizePicker: true,
         LlmModelSizePicker: true,
         SummaryEditor: true,
+        ThemeToggle: true,
       },
     },
   })
@@ -192,8 +193,8 @@ describe('index page', () => {
     downloadProgress.value = 42
     await wrapper.vm.$nextTick()
 
-    const bar = wrapper.get<HTMLProgressElement>('[data-testid="model-download-progress"]')
-    expect(bar.element.value).toBe(42)
+    const bar = wrapper.get('[data-testid="model-download-progress"]')
+    expect(bar.element.getAttribute('style')).toContain('42%')
   })
 
   it('shows a message instead of the editor when the transcription is empty', async () => {
