@@ -38,6 +38,18 @@ export interface WhisperModelProgressMessage {
   percent: number
 }
 
+export interface TranscriptionStartMessage {
+  type: 'transcription-start'
+  audioDuration: number
+  totalChunks: number
+}
+
+export interface ChunkProgressMessage {
+  type: 'chunk-progress'
+  done: number
+  total: number
+}
+
 export type WhisperWorkerRequest = WhisperTranscribeRequest
 export type WhisperWorkerResponse =
   | WhisperProgressMessage
@@ -45,3 +57,5 @@ export type WhisperWorkerResponse =
   | WhisperModelProgressMessage
   | WhisperResultMessage
   | WhisperErrorMessage
+  | TranscriptionStartMessage
+  | ChunkProgressMessage
