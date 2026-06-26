@@ -209,7 +209,10 @@ function handleRetry() {
       <p v-if="editedText.trim() === ''" data-testid="no-speech-detected">No se detectó voz en el audio.</p>
       <template v-else>
         <TranscriptEditor v-model="editedText" />
-        <ExportMenu :result="{ text: editedText, chunks: transcriptionChunks }" />
+        <ExportMenu
+          :result="{ text: editedText, chunks: transcriptionChunks }"
+          :segments="diarizationState === 'done' ? diarizationSegments : undefined"
+        />
 
         <div class="flex items-center gap-2">
           <span class="text-sm text-gray-600">Modelo de resumen:</span>
