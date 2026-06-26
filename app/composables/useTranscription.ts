@@ -57,17 +57,20 @@ export function useTranscription(createWorker: () => MinimalWorker = createDefau
     return worker
   }
 
-  function transcribe(audio: Float32Array, modelSize: WhisperModelSize) {
+  function transcribe(audio: Float32Array, modelSize: WhisperModelSize, language = 'auto') {
     errorMessage.value = null
     state.value = 'loading-model'
     const transferable = audio.slice()
-    ensureWorker().postMessage({ type: 'transcribe', audio: transferable, modelSize }, [transferable.buffer])
+    ensureWorker().postMessage(
+      { type: 'transcribe', audio: transferable, modelSize, language },
+      [transferable.buffer],
+    )
   }
 
-  function retry(audio: Float32Array, modelSize: WhisperModelSize) {
+  function retry(audio: Float32Array, modelSize: WhisperModelSize, language = 'auto') {
     worker?.terminate()
     worker = null
-    transcribe(audio, modelSize)
+    transcribe(audio, modelSize, language)
   }
 
   return { state, text, chunks, errorMessage, device, downloadProgress, transcribe, retry }

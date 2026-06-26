@@ -9,6 +9,7 @@ export interface WhisperTranscribeRequest {
   type: 'transcribe'
   audio: Float32Array
   modelSize: WhisperModelSize
+  language: string
 }
 
 export interface WhisperProgressMessage {

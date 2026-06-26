@@ -20,7 +20,7 @@ describe('useTranscription', () => {
 
     expect(state.value).toBe('loading-model')
     expect(worker.postMessage).toHaveBeenCalledWith(
-      { type: 'transcribe', audio: expect.any(Float32Array), modelSize: 'small' },
+      { type: 'transcribe', audio: expect.any(Float32Array), modelSize: 'small', language: 'auto' },
       expect.any(Array),
     )
   })
@@ -136,6 +136,16 @@ describe('useTranscription', () => {
 
     expect(state.value).toBe('transcribing')
     expect(downloadProgress.value).toBeNull()
+  })
+
+  it('passes the specified language to the worker', () => {
+    const worker = createFakeWorker()
+    const { transcribe } = useTranscription(() => worker)
+    transcribe(new Float32Array([0.1]), 'small', 'es')
+    expect(worker.postMessage).toHaveBeenCalledWith(
+      { type: 'transcribe', audio: expect.any(Float32Array), modelSize: 'small', language: 'es' },
+      expect.any(Array),
+    )
   })
 
   it('resets download progress when the worker reports an error', () => {

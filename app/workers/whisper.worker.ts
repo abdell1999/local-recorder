@@ -38,7 +38,7 @@ async function getTranscriber(modelSize: WhisperModelSize) {
 }
 
 self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
-  const { audio, modelSize } = event.data
+  const { audio, modelSize, language } = event.data
   try {
     const asr = await getTranscriber(modelSize)
     post({ type: 'progress', status: 'transcribing' })
@@ -46,6 +46,7 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
       return_timestamps: true,
       chunk_length_s: CHUNK_LENGTH_S,
       stride_length_s: STRIDE_LENGTH_S,
+      ...(language !== 'auto' ? { language } : {}),
     })
     const rawChunks = Array.isArray(output) ? output[0]?.chunks ?? [] : output.chunks ?? []
     const rawText = Array.isArray(output) ? output[0]?.text ?? '' : output.text
