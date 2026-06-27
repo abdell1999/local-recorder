@@ -1,4 +1,4 @@
-import { pipeline, WhisperTextStreamer, type AutomaticSpeechRecognitionPipeline, type WhisperTokenizer } from '@huggingface/transformers'
+import { pipeline, type AutomaticSpeechRecognitionPipeline } from '@huggingface/transformers'
 import { getModelRepoId, type WhisperModelSize } from '../utils/whisperModels'
 import type { WhisperWorkerRequest, WhisperWorkerResponse, WhisperChunk } from './whisper.types'
 import { filterNonSpeechChunks, deriveText } from '../utils/transcriptClean'
@@ -13,9 +13,6 @@ let loadedModelSize: WhisperModelSize | null = null
 const CHUNK_LENGTH_S = 30
 const STRIDE_LENGTH_S = 5
 
-// Estimación de segmentos Whisper por chunk de audio (30s). Cada chunk genera
-// entre 5 y 12 segmentos dependiendo de la densidad del habla.
-const SEGMENTS_PER_AUDIO_CHUNK = 8
 
 function post(message: WhisperWorkerResponse) {
   ;(self as unknown as Worker).postMessage(message)
@@ -49,24 +46,13 @@ self.onmessage = async (event: MessageEvent<WhisperWorkerRequest>) => {
 
     const audioDurationSeconds = audio.length / 16000
     const totalChunks = Math.max(1, Math.ceil(audioDurationSeconds / (CHUNK_LENGTH_S - STRIDE_LENGTH_S)))
-    const totalSegments = totalChunks * SEGMENTS_PER_AUDIO_CHUNK
     post({ type: 'transcription-start', audioDuration: audioDurationSeconds, totalChunks })
-
-    let segmentsDone = 0
-    const streamer = new WhisperTextStreamer(asr.tokenizer as unknown as WhisperTokenizer, {
-      skip_prompt: true,
-      on_chunk_end: () => {
-        segmentsDone = Math.min(segmentsDone + 1, totalSegments - 1)
-        post({ type: 'chunk-progress', done: segmentsDone, total: totalSegments })
-      },
-    })
 
     const output = await asr(audio, {
       return_timestamps: true,
       chunk_length_s: CHUNK_LENGTH_S,
       stride_length_s: STRIDE_LENGTH_S,
       ...(language !== 'auto' ? { language } : {}),
-      streamer,
     })
     const rawChunks = Array.isArray(output) ? output[0]?.chunks ?? [] : output.chunks ?? []
     const rawText = Array.isArray(output) ? output[0]?.text ?? '' : output.text
