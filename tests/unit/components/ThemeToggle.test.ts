@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import ThemeToggle from '../../../app/components/settings/ThemeToggle.vue'
+import { _resetThemeForTesting } from '../../../app/composables/useTheme'
 
 beforeEach(() => {
   localStorage.clear()
@@ -9,6 +10,7 @@ beforeEach(() => {
     writable: true,
     value: vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn() }),
   })
+  _resetThemeForTesting()
 })
 
 describe('ThemeToggle', () => {

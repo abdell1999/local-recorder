@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { useTheme } from '../../../app/composables/useTheme'
+import { useTheme, _resetThemeForTesting } from '../../../app/composables/useTheme'
 
 beforeEach(() => {
   localStorage.clear()
@@ -8,6 +8,7 @@ beforeEach(() => {
     writable: true,
     value: vi.fn().mockReturnValue({ matches: false, addEventListener: vi.fn() }),
   })
+  _resetThemeForTesting()
 })
 
 describe('useTheme', () => {
@@ -30,6 +31,7 @@ describe('useTheme', () => {
 
   it('reads a previously stored theme on init', () => {
     localStorage.setItem('local-recorder:theme', 'dark')
+    _resetThemeForTesting()
     const { theme } = useTheme()
     expect(theme.value).toBe('dark')
   })
@@ -53,6 +55,7 @@ describe('useTheme', () => {
       value: vi.fn().mockReturnValue({ matches: true, addEventListener: vi.fn() }),
     })
     const { setTheme } = useTheme()
+    setTheme('light')
     setTheme('auto')
     expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
