@@ -33,7 +33,7 @@ function download(format: (typeof formats)[number]) {
       v-for="format in formats"
       :key="format.key"
       :data-testid="`export-${format.key}`"
-      class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+      class="px-3 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
       @click="download(format)"
     >
       {{ format.label }}

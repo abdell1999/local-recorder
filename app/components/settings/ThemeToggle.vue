@@ -11,7 +11,7 @@ const options: { value: Theme; label: string }[] = [
 </script>
 
 <template>
-  <div class="flex rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden text-xs font-medium">
+  <div class="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden text-xs font-medium">
     <button
       v-for="opt in options"
       :key="opt.value"
@@ -19,8 +19,8 @@ const options: { value: Theme; label: string }[] = [
       class="px-3 py-1.5 transition-colors"
       :class="
         theme === opt.value
-          ? 'bg-gray-900 text-white dark:bg-white dark:text-gray-900'
-          : 'bg-white text-gray-500 hover:bg-gray-50 dark:bg-gray-800 dark:text-gray-400 dark:hover:bg-gray-700'
+          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900'
+          : 'bg-white text-slate-500 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700'
       "
       @click="setTheme(opt.value)"
     >

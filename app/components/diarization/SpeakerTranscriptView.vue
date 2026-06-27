@@ -6,7 +6,7 @@ defineProps<{ blocks: AlignedSpeakerBlock[] }>()
 const SPEAKER_COLORS = ['bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500']
 
 function speakerColor(id: number | null): string {
-  return id !== null ? (SPEAKER_COLORS[id] ?? 'bg-gray-500') : 'bg-gray-400'
+  return id !== null ? (SPEAKER_COLORS[id] ?? 'bg-slate-500') : 'bg-slate-400'
 }
 </script>
 
@@ -21,7 +21,7 @@ function speakerColor(id: number | null): string {
           {{ block.globalSpeakerId !== null ? block.globalSpeakerId + 1 : '?' }}
         </span>
       </div>
-      <p class="text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">{{ block.text }}</p>
+      <p class="text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed">{{ block.text }}</p>
     </div>
   </div>
 </template>

@@ -56,7 +56,7 @@ function onBlur() {
     <input
       data-testid="language-picker-input"
       type="text"
-      class="rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed w-48 transition-colors"
+      class="rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed w-48 transition-colors"
       :value="open ? query : getNameByCode(modelValue)"
       :disabled="disabled"
       @focus="onFocus"
@@ -67,13 +67,13 @@ function onBlur() {
     <ul
       v-if="open && filtered.length > 0"
       data-testid="language-picker-dropdown"
-      class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 shadow-lg text-sm"
+      class="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 shadow-lg text-sm"
     >
       <li
         v-for="entry in filtered"
         :key="entry.code"
         :data-testid="`language-option-${entry.code}`"
-        class="cursor-pointer px-2 py-1.5 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+        class="cursor-pointer px-2 py-1.5 text-slate-800 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-600"
         @mousedown.prevent="select(entry)"
       >
         {{ entry.name }}

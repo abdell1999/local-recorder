@@ -202,6 +202,7 @@ describe('index page', () => {
     const wrapper = mountPage()
     expect(wrapper.find('[data-testid="model-download-progress"]').exists()).toBe(false)
 
+    transcriptionState.value = 'loading-model'
     downloadProgress.value = 42
     await wrapper.vm.$nextTick()
 
