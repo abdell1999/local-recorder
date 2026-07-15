@@ -1,6 +1,7 @@
 {
   "name": "local-recorder",
   "private": true,
+  "packageManager": "pnpm@9.12.1",
   "type": "module",
   "scripts": {
     "dev": "nuxt dev",
