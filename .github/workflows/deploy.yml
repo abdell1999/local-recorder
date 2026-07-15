@@ -42,7 +42,7 @@ jobs:
         run: touch .output/public/.nojekyll
 
       - name: Push to public repository
-        uses: cpina/github-action-push-to-another-repository@v1.7.3
+        uses: cpina/github-action-push-to-another-repository@55306faa4ed53b815ae49e564af8cfb359d32ae2 # v1.7.3
         env:
           API_TOKEN_GITHUB: ${{ secrets.DEPLOY_TOKEN }}
         with:
